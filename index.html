@@ -250,10 +250,20 @@
   <div class="section">
     <h2>Erosion &amp; sea <span class="tag" id="erode-tag"></span></h2>
     <div id="params-erode"></div>
+    <div class="sublabel">sea plate</div>
+    <div class="toolrow">
+      <button class="tool" id="btn-seafill">solid sea</button>
+      <button class="tool" id="btn-seaover">over lines</button>
+    </div>
+    <div id="params-sea"></div>
     <div class="hint">
       erosion runs actual droplets over the grid: each one picks up sediment where the slope is steep
       and drops it where the slope flattens, which is what cuts the branching valleys a pure noise
-      field never has. it is the slowest step — turn it down while you place nodes.
+      field never has. it is the slowest step — turn it down while you place nodes.<br><br>
+      <b>solid sea</b> floods everything under the waterline with one opaque plate of the palette's
+      water colour, clipped on the same crossings the coastline is drawn from. leave it under the
+      lines to keep the bathymetry legible over it, or put it <b>over</b> them to bury the sea floor
+      entirely. it is a plan-view layer — the profile stack has no water to fill.
     </div>
   </div>
 
@@ -267,6 +277,46 @@
       <option value="2">slope</option>
     </select>
     <div id="params-style"></div>
+  </div>
+
+  <div class="section">
+    <h2>Overlay <span class="tag" id="overlay-tag"></span></h2>
+    <div class="toolrow">
+      <button class="tool" id="btn-veg">vegetation</button>
+    </div>
+    <select aria-label="Vegetation symbols" id="vegmix">
+      <option value="0" selected>symbols — by terrain</option>
+      <option value="1">conifer only</option>
+      <option value="2">broadleaf only</option>
+      <option value="3">scrub only</option>
+      <option value="4">marsh only</option>
+    </select>
+    <div id="params-veg"></div>
+
+    <div class="sublabel">gradient wash</div>
+    <select aria-label="Gradient wash" id="washmode">
+      <option value="0" selected>none</option>
+      <option value="1">hypsometric tint</option>
+      <option value="2">hillshade</option>
+      <option value="3">tint + hillshade</option>
+      <option value="4">aerial haze</option>
+      <option value="5">vignette</option>
+    </select>
+    <div id="params-wash"></div>
+    <div class="toolrow">
+      <button class="tool active" id="btn-washover">wash over lines</button>
+    </div>
+
+    <div class="hint">
+      the ground picks its own cover: <b>marsh</b> on the coastal flats, <b>broadleaf</b> low,
+      <b>conifer</b> up to the treeline, then <b>scrub</b> and bare <b>scree</b> above it, thinning
+      out on rock too steep to hold anything. clumping decides how hard the stands edge. the symbols
+      are polylines like the rest of the plate, so they leave in the svg as geometry — in the profile
+      stack they are projected onto their own row and dropped where a nearer ridge covers them.<br><br>
+      the <b>wash</b> is the one raster on the sheet: <b>tint</b> lays the palette ramp on the ground
+      by height, <b>hillshade</b> rakes a sun across the slopes, <b>haze</b> thickens toward the far
+      edge and <b>vignette</b> falls away at the rim.
+    </div>
   </div>
 
   <div class="section" id="block-contour">
@@ -433,6 +483,13 @@ var P = {
 
   hachSpacing: 11, hachLen: 1.1, hachSlope: 0.1, hachJitter: 0.6,
 
+  veg: false, vegMix: 0, vegSpacing: 15, vegCover: 0.6, vegClump: 0.7,
+  vegSize: 1, vegTreeline: 0.6, vegWeight: 0.7,
+
+  wash: 0, washStrength: 0.45, sunAngle: 315, washOver: true,
+
+  seaFill: false, seaOpacity: 1, seaOver: false,
+
   nodeAmp: 0.85, nodeRadius: 0.22, nodeKernel: 0,
 
   drift: false, driftSpeed: 0.25, showNodes: true, svgBg: true
@@ -491,6 +548,21 @@ var SPECS = [
   { id: 'hachSlope',   grp: 'hachure', label: 'slope gate', min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
   { id: 'hachJitter',  grp: 'hachure', label: 'jitter',    min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
 
+  /* --- overlay: vegetation ---------------------------------------------- */
+  { id: 'vegSpacing',  grp: 'veg', label: 'spacing',       min: 5, max: 40, step: 0.5, d: 1, dirty: 'lines' },
+  { id: 'vegCover',    grp: 'veg', label: 'cover',         min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'vegClump',    grp: 'veg', label: 'clumping',      min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'vegSize',     grp: 'veg', label: 'symbol size',   min: 0.4, max: 2.2, step: 0.05, d: 2, dirty: 'lines' },
+  { id: 'vegTreeline', grp: 'veg', label: 'treeline',      min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'vegWeight',   grp: 'veg', label: 'symbol weight', min: 0.2, max: 2, step: 0.05, d: 2, dirty: 'lines' },
+
+  /* --- overlay: gradient wash -------------------------------------------- */
+  { id: 'washStrength', grp: 'wash', label: 'wash strength', min: 0, max: 1, step: 0.01, d: 2, dirty: 'wash' },
+  { id: 'sunAngle',     grp: 'wash', label: 'sun azimuth',   min: 0, max: 359, step: 1, d: 0, dirty: 'wash' },
+
+  /* --- sea plate ---------------------------------------------------------- */
+  { id: 'seaOpacity', grp: 'sea', label: 'sea opacity', min: 0.05, max: 1, step: 0.01, d: 2, dirty: 'draw' },
+
   /* --- node defaults / selected node ----------------------------------- */
   { id: 'nodeAmp',    grp: 'node', label: 'height',  min: -1.6, max: 1.6, step: 0.01, d: 2, dirty: 'node' },
   { id: 'nodeRadius', grp: 'node', label: 'radius',  min: 0.03, max: 1.2, step: 0.005, d: 3, dirty: 'node' },
@@ -506,30 +578,36 @@ var KERNELS = ['dome', 'cone', 'gauss', 'mesa', 'crater', 'spire'];
    ================================================================== */
 var PALETTES = [
   { name: 'blueprint', bg: '#061520', light: false, flat: '#7fd4f5',
-    stops: ['#10405e', '#2f7fa8', '#7fd4f5', '#e8fbff'], sea: '#0d2a3d', node: '#ffcf5c' },
+    stops: ['#10405e', '#2f7fa8', '#7fd4f5', '#e8fbff'], sea: '#0d2a3d', node: '#ffcf5c', veg: '#4fc39c' },
   { name: 'survey sheet', bg: '#f2ead9', light: true, flat: '#7a4b22',
-    stops: ['#c3ab84', '#a3773f', '#7a4b22', '#43230c'], sea: '#b9c6c0', node: '#b3492c' },
+    stops: ['#c3ab84', '#a3773f', '#7a4b22', '#43230c'], sea: '#b9c6c0', node: '#b3492c', veg: '#5f7f43' },
   { name: 'graphite', bg: '#e9e5dc', light: true, flat: '#2c2a26',
-    stops: ['#9b968a', '#6a655c', '#3a3733', '#171614'], sea: '#c5c1b6', node: '#a8482e' },
+    stops: ['#9b968a', '#6a655c', '#3a3733', '#171614'], sea: '#c5c1b6', node: '#a8482e', veg: '#6b7a5e' },
   { name: 'bathymetric', bg: '#02121c', light: false, flat: '#3fc9d6',
-    stops: ['#0a3550', '#0f6f92', '#3fc9d6', '#dcfbff'], sea: '#06202f', node: '#ffb14e' },
+    stops: ['#0a3550', '#0f6f92', '#3fc9d6', '#dcfbff'], sea: '#06202f', node: '#ffb14e', veg: '#2fae8b' },
   { name: 'magma', bg: '#09070a', light: false, flat: '#f07030',
-    stops: ['#3b1a3f', '#a52c4a', '#f07030', '#ffe6a8'], sea: '#1a0d1c', node: '#7fd4f5' },
+    stops: ['#3b1a3f', '#a52c4a', '#f07030', '#ffe6a8'], sea: '#1a0d1c', node: '#7fd4f5', veg: '#8fae4c' },
   { name: 'chlorophyll', bg: '#07100b', light: false, flat: '#b5cc6a',
-    stops: ['#1d3a24', '#4c7a3a', '#b5cc6a', '#f2f7d8'], sea: '#0b1d18', node: '#ff8b6b' },
+    stops: ['#1d3a24', '#4c7a3a', '#b5cc6a', '#f2f7d8'], sea: '#0b1d18', node: '#ff8b6b', veg: '#d8e88f' },
   { name: 'india ink', bg: '#0b0b0c', light: false, flat: '#e8e8e8',
-    stops: ['#4a4a4c', '#8b8b8e', '#c8c8ca', '#ffffff'], sea: '#141416', node: '#ff5d6c' }
+    stops: ['#4a4a4c', '#8b8b8e', '#c8c8ca', '#ffffff'], sea: '#141416', node: '#ff5d6c', veg: '#9fa79b' }
 ];
 
 function hex2rgb(h) {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 }
-function rampColor(pal, t, alpha) {
+function rampRGB(pal, t) {
   var s = pal.stops, n = s.length - 1;
   var x = clamp(t, 0, 1) * n, i = Math.min(n - 1, Math.floor(x)), f = x - i;
   var a = hex2rgb(s[i]), b = hex2rgb(s[i + 1]);
-  var r = Math.round(lerp(a[0], b[0], f)), g = Math.round(lerp(a[1], b[1], f)), bl = Math.round(lerp(a[2], b[2], f));
-  return 'rgba(' + r + ',' + g + ',' + bl + ',' + alpha.toFixed(3) + ')';
+  return [Math.round(lerp(a[0], b[0], f)), Math.round(lerp(a[1], b[1], f)), Math.round(lerp(a[2], b[2], f))];
+}
+function rampColor(pal, t, alpha) {
+  var c = rampRGB(pal, t);
+  return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + alpha.toFixed(3) + ')';
+}
+function rgba(rgb, alpha) {
+  return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + alpha.toFixed(3) + ')';
 }
 function flatColor(pal, alpha) {
   var c = hex2rgb(pal.flat);
@@ -952,7 +1030,7 @@ function pushIso(out, level, w, colour) {
 /* profile stack.  rows are drawn front to back and a horizon buffer keeps
    whatever a nearer ridge already covered from being drawn again - the
    hidden-line removal that makes a stack of sections read as a solid landform. */
-function genProfiles() {
+function genProfiles(sites) {
   var out = [];
   var rows = P.rows | 0;
   var step = Math.max(0.5, P.detail);
@@ -965,11 +1043,41 @@ function genProfiles() {
   var reliefPx = H * 0.5 * P.relief;
   var occl = P.occlusion | 0;
 
+  /* every vegetation site belongs to the row it stands on, so it can be stamped
+     while that row's horizon is still the horizon in front of it */
+  var buckets = null, vcol = null, vw = 0;
+  if (sites && sites.length) {
+    buckets = [];
+    for (i = 0; i < sites.length; i++) {
+      var bi = rows === 1 ? 0 : clamp(Math.round(sites[i].my * (rows - 1)), 0, rows - 1);
+      (buckets[bi] || (buckets[bi] = [])).push(sites[i]);
+    }
+    vcol = vegInk(); vw = P.weight * P.vegWeight;
+  }
+
   for (var r = rows - 1; r >= 0; r--) {
     var v = rows === 1 ? 0.5 : r / (rows - 1);
     var my = v;
     var baseY = top + (H * 0.82 - depth) * 0.5 + v * depth;
     var shear = (v - 0.5) * P.skew * H * 0.45;
+
+    /* stamped before the row writes itself into the horizon: the ground a
+       symbol stands on must not be counted as the thing hiding it */
+    if (buckets && buckets[r]) {
+      var bs = buckets[r];
+      for (var q = 0; q < bs.length; q++) {
+        var st = bs[q];
+        var vx = (st.mx / aspect) * W + shear;
+        var vy = baseY - (Math.max(st.h, P.sea) - P.sea) * reliefPx;
+        if (vx < -20 || vx > W + 20) continue;
+        if (occl !== 2) {
+          var vb = clamp(Math.round(vx), 0, horizon.length - 1);
+          if (vy > horizon[vb] - 0.5) continue;
+        }
+        stampVeg(vegOut, st.type, vx, vy, st.s * lerp(0.7, 1.1, v), vcol, vw);
+        vegCount++;
+      }
+    }
 
     var run = null, runs = [];
     for (i = 0; i <= cols; i++) {
@@ -1130,13 +1238,294 @@ function applyWobble(ls) {
 function generate() {
   var t0 = performance.now();
   var ls;
-  if (P.mode === 1) ls = genProfiles();
+  vegOut = []; vegCount = 0;
+  var sites = vegSites();
+
+  if (P.mode === 1) ls = genProfiles(sites);
   else if (P.mode === 2) ls = genFlow();
   else if (P.mode === 3) ls = genHachure();
   else ls = genContours();
   applyWobble(ls);
+
+  /* the symbols are stamped after the pen wobble and appended last, so they
+     stay crisp and sit on top of the linework they annotate */
+  if (P.mode !== 1) emitVeg(sites);
+  for (var i = 0; i < vegOut.length; i++) ls.push(vegOut[i]);
+
   lines = ls;
+  seaPolys = genSeaFill();
   return performance.now() - t0;
+}
+
+/* ==================================================================
+   5b.  overlay.  everything above sits on the linework itself; this is the
+        sheet laid over it - the symbols a surveyor stamps on the ground it
+        crosses, a solid plate of water, and the washes that carry the light.
+   ================================================================== */
+var VEG_NAMES = ['conifer', 'broadleaf', 'scrub', 'marsh', 'scree'];
+var vegOut = [], vegCount = 0;
+
+/* the sites are picked once in map space, so the same wood lands on the same
+   ground whichever projection the current mode happens to draw in */
+function vegSites() {
+  var out = [];
+  if (!P.veg || !field) return out;
+  var rnd = mulberry32(P.seed * 5449 + 91);
+  var sp = Math.max(5, P.vegSpacing);
+  var cols = Math.ceil(W / sp), rows = Math.ceil(H / sp);
+  var span = Math.max(0.001, 1 - P.sea);
+
+  for (var j = 0; j <= rows; j++) {
+    for (var i = 0; i <= cols; i++) {
+      var px = i * sp + (rnd() - 0.5) * sp * 0.95;
+      var py = j * sp + (rnd() - 0.5) * sp * 0.95;
+      var pick = rnd(), roll = rnd(), sz = 0.72 + rnd() * 0.5;
+      if (px < 0 || px > W || py < 0 || py > H) continue;
+
+      var mx = px / H, my = py / H;
+      var h = sampleH(mx, my);
+      if (h <= P.sea) continue;                       /* nothing grows in the water */
+      var t = clamp((h - P.sea) / span, 0, 1);
+      var g = gradH(mx, my);
+      var slope = clamp(Math.sqrt(g[0] * g[0] + g[1] * g[1]) / 6, 0, 1);
+
+      /* a slow noise decides where the cover thickens, so a stand comes out with
+         an edge to it instead of an even sprinkle over the whole plate */
+      var patch = 0.5 + 0.5 * noise(mx * 3.1 + 61.3, my * 3.1 - 24.7);
+      var cover = P.vegCover * lerp(1, patch * 1.7, P.vegClump);
+      cover *= 1 - 0.82 * smoothstep(P.vegTreeline, P.vegTreeline + 0.16, t);
+      cover *= 1 - 0.85 * smoothstep(0.45, 0.85, slope);
+      if (pick > cover) continue;
+
+      /* the band the site sits in picks the symbol: marsh on the coastal flats,
+         broadleaf low, conifer up to the treeline, scrub and bare scree above */
+      var type;
+      if (P.vegMix > 0) type = P.vegMix - 1;
+      else if (t < 0.06 && slope < 0.12) type = 3;
+      else if (t > P.vegTreeline) type = slope > 0.38 ? 4 : 2;
+      else if (t < 0.4) type = roll < 0.72 ? 1 : 0;
+      else type = roll < 0.82 ? 0 : 1;
+
+      out.push({ x: px, y: py, mx: mx, my: my, h: h, t: t, type: type, s: sp * P.vegSize * sz });
+    }
+  }
+  return out;
+}
+
+function vegInk() { return rgba(hex2rgb(pal().veg), clamp(P.opacity * 0.95, 0, 1)); }
+
+/* the symbols themselves.  they are polylines like everything else on the
+   plate, so they travel out through the svg as real geometry rather than as a
+   texture pasted over the top. */
+function stampVeg(out, type, x, y, s, col, w) {
+  var k, a, yy, hw;
+  if (type === 0) {                                   /* conifer */
+    out.push({ pts: [x, y, x, y - s], w: w, c: col, closed: false, fill: null });
+    for (k = 0; k < 3; k++) {
+      yy = y - s * (0.26 + 0.23 * k); hw = s * (0.42 - 0.1 * k);
+      out.push({ pts: [x - hw, yy, x, yy - s * 0.3, x + hw, yy], w: w, c: col, closed: false, fill: null });
+    }
+  } else if (type === 1) {                            /* broadleaf */
+    out.push({ pts: [x, y, x, y - s * 0.38], w: w, c: col, closed: false, fill: null });
+    var cy = y - s * 0.66, r = s * 0.34, ring = [];
+    for (k = 0; k < 9; k++) {
+      a = k / 9 * Math.PI * 2;
+      ring.push(x + Math.cos(a) * r, cy + Math.sin(a) * r * 0.92);
+    }
+    out.push({ pts: ring, w: w, c: col, closed: true, fill: null });
+  } else if (type === 2) {                            /* scrub */
+    var tuft = [];
+    for (k = 0; k <= 6; k++) {
+      a = Math.PI * (1 - k / 6);
+      tuft.push(x + Math.cos(a) * s * 0.34, y - s * 0.12 - Math.sin(a) * s * 0.34);
+    }
+    out.push({ pts: tuft, w: w, c: col, closed: false, fill: null });
+    out.push({ pts: [x - s * 0.3, y - s * 0.12, x + s * 0.3, y - s * 0.12], w: w * 0.85, c: col, closed: false, fill: null });
+  } else if (type === 3) {                            /* marsh */
+    out.push({ pts: [x, y, x, y - s * 0.72], w: w, c: col, closed: false, fill: null });
+    for (k = 0; k < 3; k++) {
+      yy = y - s * (0.18 + 0.24 * k); hw = s * (0.46 - 0.12 * k);
+      out.push({ pts: [x - hw, yy, x + hw, yy], w: w, c: col, closed: false, fill: null });
+    }
+  } else {                                            /* scree */
+    out.push({ pts: [x - s * 0.26, y, x, y - s * 0.34, x + s * 0.26, y], w: w, c: col, closed: false, fill: null });
+    out.push({ pts: [x + s * 0.12, y - s * 0.48, x + s * 0.32, y - s * 0.6], w: w * 0.9, c: col, closed: false, fill: null });
+  }
+}
+
+/* plan modes stamp straight onto the map.  the profile stack projects its own
+   sites row by row inside genProfiles, where the horizon buffer is still around
+   to say which of them a nearer ridge has already covered. */
+function emitVeg(sites) {
+  var col = vegInk(), w = P.weight * P.vegWeight;
+  for (var i = 0; i < sites.length; i++) {
+    var st = sites[i];
+    stampVeg(vegOut, st.type, st.x, st.y, st.s, col, w);
+    vegCount++;
+  }
+}
+
+/* ---- the sea as a solid plate --------------------------------------
+   each cell is clipped against the waterline with the same crossings the
+   contour uses, so the edge of the fill sits exactly under the coastline.
+   whole cells are merged along the row to keep the path count down. */
+var seaPolys = [];
+
+function genSeaFill() {
+  var out = [];
+  if (!P.seaFill || !field || P.mode === 1) return out;
+  var level = P.sea;
+  if (level <= 0.0005) return out;
+  var sx = W / (gw - 1), sy = H / (gh - 1);
+
+  for (var j = 0; j < gh - 1; j++) {
+    var row = j * gw, row2 = row + gw, run = -1;
+    var y0 = j * sy, y1 = (j + 1) * sy;
+    for (var i = 0; i < gw - 1; i++) {
+      var v00 = field[row + i], v10 = field[row + i + 1];
+      var v01 = field[row2 + i], v11 = field[row2 + i + 1];
+      var c = 0;
+      if (v00 > level) c |= 1;
+      if (v10 > level) c |= 2;
+      if (v11 > level) c |= 4;
+      if (v01 > level) c |= 8;
+
+      if (c === 0) { if (run < 0) run = i; continue; }
+      if (run >= 0) { out.push([run * sx, y0, i * sx, y0, i * sx, y1, run * sx, y1]); run = -1; }
+      if (c === 15) continue;
+
+      var x0 = i * sx, x1 = (i + 1) * sx, t;
+      t = v10 - v00; var e0x = (i + (t === 0 ? 0.5 : (level - v00) / t)) * sx;
+      t = v11 - v10; var e1y = (j + (t === 0 ? 0.5 : (level - v10) / t)) * sy;
+      t = v11 - v01; var e2x = (i + (t === 0 ? 0.5 : (level - v01) / t)) * sx;
+      t = v01 - v00; var e3y = (j + (t === 0 ? 0.5 : (level - v00) / t)) * sy;
+
+      /* the two saddles resolve the way the contour resolves them, so the plate
+         and the coastline never disagree about which way the water runs through */
+      if ((c === 5 || c === 10) && (v00 + v10 + v01 + v11) * 0.25 > level) {
+        if (c === 5) {
+          out.push([e0x, y0, x1, y0, x1, e1y]);
+          out.push([e2x, y1, x0, y1, x0, e3y]);
+        } else {
+          out.push([x0, y0, e0x, y0, x0, e3y]);
+          out.push([x1, e1y, x1, y1, e2x, y1]);
+        }
+        continue;
+      }
+
+      var q = [];
+      if (!(c & 1)) q.push(x0, y0);
+      if (!(c & 1) !== !(c & 2)) q.push(e0x, y0);
+      if (!(c & 2)) q.push(x1, y0);
+      if (!(c & 2) !== !(c & 4)) q.push(x1, e1y);
+      if (!(c & 4)) q.push(x1, y1);
+      if (!(c & 4) !== !(c & 8)) q.push(e2x, y1);
+      if (!(c & 8)) q.push(x0, y1);
+      if (!(c & 8) !== !(c & 1)) q.push(x0, e3y);
+      if (q.length >= 6) out.push(q);
+    }
+    if (run >= 0) out.push([run * sx, y0, (gw - 1) * sx, y0, (gw - 1) * sx, y1, run * sx, y1]);
+  }
+  return out;
+}
+
+/* ---- gradient washes ------------------------------------------------
+   the one part of the plate that is not geometry: a low-resolution raster of
+   the field itself, scaled up over the sheet.  the lines stay underneath it,
+   which is the point - the wash is what a printed map lays over its linework. */
+var washPasses = [];
+
+function mkCanvas(w, h) {
+  var c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+
+/* hypsometric tint: the palette ramp painted on the ground it belongs to, with
+   the sea colour below the waterline */
+function washTint() {
+  var c = mkCanvas(gw, gh), g = c.getContext('2d');
+  var img = g.createImageData(gw, gh), d = img.data;
+  var p = pal(), span = Math.max(0.001, 1 - P.sea), q;
+  var lut = new Uint8Array(96 * 3);
+  for (q = 0; q < 96; q++) {
+    var rgb = rampRGB(p, q / 95);
+    lut[q * 3] = rgb[0]; lut[q * 3 + 1] = rgb[1]; lut[q * 3 + 2] = rgb[2];
+  }
+  var sea = hex2rgb(p.sea);
+  for (var i = 0, k = 0; i < field.length; i++, k += 4) {
+    var v = field[i];
+    if (v < P.sea) { d[k] = sea[0]; d[k + 1] = sea[1]; d[k + 2] = sea[2]; }
+    else {
+      var idx = (clamp((v - P.sea) / span, 0, 1) * 95) | 0;
+      d[k] = lut[idx * 3]; d[k + 1] = lut[idx * 3 + 1]; d[k + 2] = lut[idx * 3 + 2];
+    }
+    d[k + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return { cv: c, blend: 'source-over', a: 1 };
+}
+
+/* hillshade: a sun raked across the surface normals.  flat ground lands on
+   neutral grey so the wash only darkens and lifts what actually leans. */
+function washShade() {
+  var c = mkCanvas(gw, gh), g = c.getContext('2d');
+  var img = g.createImageData(gw, gh), d = img.data;
+  var az = (P.sunAngle % 360) * Math.PI / 180, alt = Math.PI / 4;
+  var lx = Math.sin(az) * Math.cos(alt), ly = -Math.cos(az) * Math.cos(alt), lz = Math.sin(alt);
+  var stepPx = H / (gh - 1), exag = 1.3 * H;
+
+  for (var j = 0; j < gh; j++) {
+    var jm = (j > 0 ? j - 1 : 0) * gw, jp = (j < gh - 1 ? j + 1 : gh - 1) * gw;
+    var dj = (j > 0 ? 1 : 0) + (j < gh - 1 ? 1 : 0);
+    for (var i = 0; i < gw; i++) {
+      var im = i > 0 ? i - 1 : 0, ip = i < gw - 1 ? i + 1 : gw - 1;
+      var dhx = (field[j * gw + ip] - field[j * gw + im]) / ((ip - im) * stepPx);
+      var dhy = (field[jp + i] - field[jm + i]) / (dj * stepPx);
+      var nx = -dhx * exag, ny = -dhy * exag;
+      var m = Math.sqrt(nx * nx + ny * ny + 1);
+      var sh = (nx * lx + ny * ly + lz) / m;
+      var v = clamp(128 + (sh / lz - 1) * 150, 0, 255);
+      var k = (j * gw + i) * 4;
+      d[k] = d[k + 1] = d[k + 2] = v; d[k + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return { cv: c, blend: 'soft-light', a: 1 };
+}
+
+/* aerial haze: the ground colour thickening toward the far edge of the sheet */
+function washHaze() {
+  var c = mkCanvas(8, 256), g = c.getContext('2d');
+  var rgb = hex2rgb(pal().bg);
+  var gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, rgba(rgb, 0.95));
+  gr.addColorStop(0.35, rgba(rgb, 0.45));
+  gr.addColorStop(0.72, rgba(rgb, 0.1));
+  gr.addColorStop(1, rgba(rgb, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, 8, 256);
+  return { cv: c, blend: 'source-over', a: 1 };
+}
+
+/* vignette: the plate falling away at the rim, the way a lens or a lamp leaves it */
+function washVignette() {
+  var c = mkCanvas(256, 256), g = c.getContext('2d');
+  var rgb = hex2rgb(pal().bg);
+  var gr = g.createRadialGradient(128, 128, 24, 128, 128, 180);
+  gr.addColorStop(0, rgba(rgb, 0));
+  gr.addColorStop(0.6, rgba(rgb, 0.2));
+  gr.addColorStop(1, rgba(rgb, 0.96));
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  return { cv: c, blend: 'source-over', a: 1 };
+}
+
+function buildWash() {
+  washPasses = [];
+  if (!field || !P.wash) return;
+  if (P.wash === 1 || P.wash === 3) washPasses.push(washTint());
+  if (P.wash === 2 || P.wash === 3) washPasses.push(washShade());
+  if (P.wash === 4) washPasses.push(washHaze());
+  if (P.wash === 5) washPasses.push(washVignette());
 }
 
 /* ==================================================================
@@ -1159,6 +1548,9 @@ function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = p.bg;
   ctx.fillRect(0, 0, W, H);
+
+  if (!P.seaOver) drawSea();
+  if (!P.washOver) drawWash();
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -1187,7 +1579,42 @@ function draw() {
     ctx.stroke();
   }
 
+  if (P.seaOver) drawSea();
+  if (P.washOver) drawWash();
+
   if (P.showNodes) drawNodes();
+}
+
+/* one path for the whole plate: adjacent cells share their edges inside it, so
+   the water comes out flat instead of seamed */
+function drawSea() {
+  if (!seaPolys.length) return;
+  ctx.save();
+  ctx.globalAlpha = clamp(P.seaOpacity, 0, 1);
+  ctx.fillStyle = pal().sea;
+  ctx.beginPath();
+  for (var i = 0; i < seaPolys.length; i++) {
+    var q = seaPolys[i];
+    ctx.moveTo(q[0], q[1]);
+    for (var k = 2; k < q.length; k += 2) ctx.lineTo(q[k], q[k + 1]);
+    ctx.closePath();
+  }
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawWash() {
+  if (!washPasses.length || P.washStrength <= 0.001) return;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  if (ctx.imageSmoothingQuality !== undefined) ctx.imageSmoothingQuality = 'high';
+  for (var i = 0; i < washPasses.length; i++) {
+    var ps = washPasses[i];
+    ctx.globalAlpha = clamp(P.washStrength * ps.a, 0, 1);
+    ctx.globalCompositeOperation = ps.blend;
+    ctx.drawImage(ps.cv, 0, 0, W, H);
+  }
+  ctx.restore();
 }
 
 function drawNodes() {
@@ -1228,12 +1655,13 @@ function drawNodes() {
    7.  scheduling.  field work is the expensive half, so a change that only
        touches the pen re-runs the generators and nothing else.
    ================================================================== */
-var needField = true, needLines = true, pending = false, draftMode = false;
+var needField = true, needLines = true, needWash = true, pending = false, draftMode = false;
 var lastFieldMs = 0, lastLineMs = 0;
 
 function invalidate(kind) {
   if (kind === 'field') needField = true;
-  if (kind === 'field' || kind === 'lines') needLines = true;
+  if (kind === 'field' || kind === 'lines') { needLines = true; needWash = true; }
+  if (kind === 'wash') needWash = true;
   schedule();
 }
 function schedule() {
@@ -1248,8 +1676,9 @@ function schedule() {
 function run() {
   try {
     var res = draftMode ? Math.min(P.res, 130) : P.res;
-    if (needField) { lastFieldMs = buildField(res); needField = false; needLines = true; }
+    if (needField) { lastFieldMs = buildField(res); needField = false; needLines = true; needWash = true; }
     if (needLines) { lastLineMs = generate(); needLines = false; }
+    if (needWash) { buildWash(); needWash = false; }
     draw();
     status();
   } catch (e) {
@@ -1286,10 +1715,22 @@ function status() {
     s += ' · slope <span class="live">' + hoverS.toFixed(2) + '</span>';
     if (hoverH < P.sea) s += ' · <span class="warn">below sea</span>';
   }
+  if (P.veg) s += ' · symbols <span class="k">' + vegCount + '</span>';
   if (P.drift) s += ' · <span class="live">drifting</span>';
   if (draftMode) s += ' · <span class="warn">draft</span>';
   if (flashMsg) s += ' · <span class="live">' + flashMsg + '</span>';
   document.getElementById('status').innerHTML = s;
+  syncOverlayUI();
+}
+
+var WASH_NAMES = ['', 'tint', 'shade', 'tint+shade', 'haze', 'vignette'];
+function syncOverlayUI() {
+  var bits = [];
+  if (P.veg) bits.push(P.vegMix > 0 ? VEG_NAMES[P.vegMix - 1] : 'veg');
+  if (P.wash) bits.push(WASH_NAMES[P.wash]);
+  if (P.seaFill) bits.push('sea');
+  var tag = document.getElementById('overlay-tag');
+  if (tag) tag.textContent = bits.length ? bits.join(' · ') : 'off';
 }
 
 var flashMsg = '', flashTimer = null;
@@ -1355,12 +1796,17 @@ function syncAll() {
   document.getElementById('palette').value = String(P.palette);
   document.getElementById('colormode').value = String(P.colormode);
   document.getElementById('occlusion').value = String(P.occlusion);
+  document.getElementById('vegmix').value = String(P.vegMix);
+  document.getElementById('washmode').value = String(P.wash);
   document.getElementById('kernelsel').value = String(selected >= 0 ? nodes[selected].k : P.nodeKernel);
   document.getElementById('seedin').value = P.seed;
   setToggle('btn-bathy', P.bathy); setToggle('btn-coast', P.coast);
   setToggle('btn-smoothlines', P.smoothLines); setToggle('btn-flowsea', P.flowSea);
   setToggle('btn-handles', P.showNodes); setToggle('btn-drift', P.drift);
   setToggle('btn-svgbg', P.svgBg);
+  setToggle('btn-veg', P.veg); setToggle('btn-washover', P.washOver);
+  setToggle('btn-seafill', P.seaFill); setToggle('btn-seaover', P.seaOver);
+  syncOverlayUI();
   syncModeUI();
   syncNodeUI();
 }
@@ -1473,6 +1919,18 @@ function buildPanel() {
     });
   }
 
+  bindToggle('btn-veg', 'veg', 'lines');
+  bindToggle('btn-washover', 'washOver', 'draw');
+  bindToggle('btn-seafill', 'seaFill', 'lines');
+  bindToggle('btn-seaover', 'seaOver', 'draw');
+
+  document.getElementById('vegmix').addEventListener('change', function () {
+    P.vegMix = +this.value; invalidate('lines');
+  });
+  document.getElementById('washmode').addEventListener('change', function () {
+    P.wash = +this.value; invalidate('wash');
+  });
+
   bindToggle('btn-bathy', 'bathy', 'lines');
   bindToggle('btn-coast', 'coast', 'lines');
   bindToggle('btn-smoothlines', 'smoothLines', 'lines');
@@ -1572,6 +2030,18 @@ var PRESETS = [
   { name: 'combed field', p: { mode: 2, fractal: 0, scale: 1.8, octaves: 4, gain: 0.55, warp: 1.0,
       island: 0.1, erosion: 0.15, sea: 0.05, seeds: 2400, flowStep: 1.6, flowLen: 300, flowMin: 40,
       flowAngle: 88, taper: 0.1, palette: 5, colormode: 1, weight: 0.55, weightVar: 0.3, wobble: 0.4 } },
+  { name: 'forest survey', p: { mode: 0, fractal: 0, scale: 2.8, octaves: 6, gain: 0.5, warp: 0.4,
+      island: 0.45, erosion: 0.55, sea: 0.3, levels: 24, indexEvery: 5, coastWeight: 2.6,
+      palette: 1, colormode: 1, weight: 0.5, weightVar: 0.4, wobble: 0.45, terrace: 0,
+      veg: true, vegMix: 0, vegSpacing: 12, vegCover: 0.72, vegClump: 0.8, vegSize: 1,
+      vegTreeline: 0.6, vegWeight: 0.55, seaFill: true, seaOpacity: 1, seaOver: false,
+      wash: 1, washStrength: 0.26, washOver: true } },
+  { name: 'shaded plate', p: { mode: 0, fractal: 1, scale: 2.4, octaves: 7, gain: 0.5, warp: 0.3,
+      island: 0.5, erosion: 0.65, smooth: 1, sea: 0.33, levels: 34, indexEvery: 5, indexWeight: 2.4,
+      palette: 3, colormode: 1, weight: 0.55, weightVar: 0.35, wobble: 0.3, terrace: 0,
+      veg: true, vegMix: 0, vegSpacing: 17, vegCover: 0.5, vegClump: 0.85, vegSize: 0.9,
+      vegTreeline: 0.5, vegWeight: 0.5, seaFill: true, seaOpacity: 1, seaOver: false,
+      wash: 3, washStrength: 0.5, sunAngle: 315, washOver: true } },
   { name: 'abyssal', p: { mode: 0, fractal: 0, scale: 5.5, octaves: 7, gain: 0.58, warp: 0.9,
       island: 0.0, erosion: 0.1, sea: 0.6, levels: 14, indexEvery: 4, bathy: true, bathyLevels: 26,
       coastWeight: 1.5, palette: 3, colormode: 1, weight: 0.5, weightVar: 0.2, wobble: 0.8 } }
@@ -1594,7 +2064,12 @@ function buildPresets() {
   });
 }
 
+var OVERLAY_OFF = { veg: false, wash: 0, seaFill: false };
+
 function applyPreset(src) {
+  /* the overlay is off unless the sheet asks for it, so picking a preset never
+     drags a wash or a wood along from the last one */
+  for (var d in OVERLAY_OFF) if (src[d] === undefined) P[d] = OVERLAY_OFF[d];
   for (var k in src) if (P[k] !== undefined) P[k] = src[k];
   noise = makeNoise(P.seed);
   document.body.classList.toggle('lightfield', !!pal().light);
@@ -1806,6 +2281,35 @@ function svgPaint(css, attr) {
   return attr + '="' + hex + '"' + (a < 0.999 ? ' ' + attr + '-opacity="' + a.toFixed(3) + '"' : '');
 }
 
+/* the plate travels as one filled path; the wash is the only thing on the sheet
+   that has to go out as a raster, so it rides along as an embedded image */
+function svgSea() {
+  if (!seaPolys.length) return '';
+  var d = '', i, k;
+  for (i = 0; i < seaPolys.length; i++) {
+    var q = seaPolys[i];
+    d += 'M' + q[0].toFixed(2) + ' ' + q[1].toFixed(2);
+    for (k = 2; k < q.length; k += 2) d += 'L' + q[k].toFixed(2) + ' ' + q[k + 1].toFixed(2);
+    d += 'Z';
+  }
+  return '<path d="' + d + '" fill="' + pal().sea + '"' +
+         (P.seaOpacity < 0.999 ? ' fill-opacity="' + P.seaOpacity.toFixed(3) + '"' : '') +
+         ' stroke="none"/>';
+}
+
+function svgWash() {
+  if (!washPasses.length || P.washStrength <= 0.001) return '';
+  var s = '', w = Math.round(W), h = Math.round(H);
+  for (var i = 0; i < washPasses.length; i++) {
+    var ps = washPasses[i];
+    s += '<image x="0" y="0" width="' + w + '" height="' + h + '" preserveAspectRatio="none"' +
+         ' opacity="' + clamp(P.washStrength * ps.a, 0, 1).toFixed(3) + '"' +
+         ' style="mix-blend-mode:' + ps.blend + '"' +
+         ' xlink:href="' + ps.cv.toDataURL('image/png') + '"/>';
+  }
+  return s;
+}
+
 function exportSVG() {
   var wasDraft = draftMode;
   if (wasDraft) { draftMode = false; needField = true; needLines = true; run(); }
@@ -1813,10 +2317,13 @@ function exportSVG() {
   var p = pal();
   var out = [];
   out.push('<?xml version="1.0" encoding="UTF-8"?>');
-  out.push('<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(W) + '" height="' +
-           Math.round(H) + '" viewBox="0 0 ' + Math.round(W) + ' ' + Math.round(H) + '">');
+  out.push('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' +
+           Math.round(W) + '" height="' + Math.round(H) +
+           '" viewBox="0 0 ' + Math.round(W) + ' ' + Math.round(H) + '">');
   out.push('<title>relief — ' + stamp() + '</title>');
   if (P.svgBg) out.push('<rect width="100%" height="100%" fill="' + p.bg + '"/>');
+  if (!P.seaOver) out.push(svgSea());
+  if (!P.washOver) out.push(svgWash());
   out.push('<g fill="none" stroke-linecap="round" stroke-linejoin="round">');
 
   for (var i = 0; i < lines.length; i++) {
@@ -1834,7 +2341,10 @@ function exportSVG() {
     out.push('<path d="' + d + '" ' + svgPaint(L.c, 'stroke') +
              ' stroke-width="' + L.w.toFixed(2) + '"/>');
   }
-  out.push('</g></svg>');
+  out.push('</g>');
+  if (P.seaOver) out.push(svgSea());
+  if (P.washOver) out.push(svgWash());
+  out.push('</svg>');
   download('relief_' + stamp() + '.svg', new Blob([out.join('\n')], { type: 'image/svg+xml' }));
 }
 
