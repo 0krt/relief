@@ -267,6 +267,13 @@
       <option value="2">slope</option>
     </select>
     <div id="params-style"></div>
+    <div class="toolrow">
+      <button class="tool" id="btn-seafill">fill sea</button>
+    </div>
+    <div class="hint">
+      a solid sea cut to the coastline, drawn under everything else. plan views only —
+      contour, flow and hachure.
+    </div>
   </div>
 
   <div class="section" id="block-contour">
@@ -290,6 +297,37 @@
       <option value="1" selected>horizon — hidden line</option>
       <option value="2">none — transparent</option>
     </select>
+
+    <div class="sublabel">wire mesh</div>
+    <div class="toolrow">
+      <button class="tool" id="btn-mesh">cross wires</button>
+      <button class="tool active" id="btn-meshsquare">square cells</button>
+    </div>
+    <div id="params-mesh"></div>
+    <div class="hint">
+      the rungs between one section and the next, hidden by the same horizon the rows use.
+      <b>square cells</b> spaces them to match the rows on screen and ignores the slider.
+    </div>
+
+    <div class="sublabel">plate shape</div>
+    <div id="params-plate"></div>
+    <div class="hint">
+      <b>convergence</b> narrows the far rows, <b>depth ease</b> crowds them toward the back,
+      <b>plate turn</b> swings the section line around the map and <b>sample zoom</b> decides how
+      much ground the plate covers.
+    </div>
+
+    <div class="sublabel">strata</div>
+    <div class="toolrow">
+      <button class="tool" id="btn-strata">cut block</button>
+      <button class="tool active" id="btn-strataside">flanks</button>
+    </div>
+    <div id="params-strata"></div>
+    <div class="hint">
+      the ground under the front of the plate, drawn as beds. <b>flattening</b> takes the deep
+      beds off the shape of the surface and down onto the floor; <b>folding</b> gives each one a
+      warp of its own. shear the plate to swing a flank into view.
+    </div>
   </div>
 
   <div class="section" id="block-flow">
@@ -310,6 +348,21 @@
     <div class="hint">
       lehmann's rule: strokes point straight downhill and get heavier as the ground steepens,
       so the flats stay empty paper.
+    </div>
+  </div>
+
+  <div class="section" id="block-overlay">
+    <h2>Rivers &amp; paths <span class="tag" id="overlay-tag"></span></h2>
+    <div class="toolrow">
+      <button class="tool" id="btn-rivers">rivers</button>
+      <button class="tool" id="btn-paths">paths</button>
+    </div>
+    <div id="params-overlay"></div>
+    <div class="hint">
+      rivers come out of the flow accumulation — every cell's water sent to its lowest neighbour,
+      the channels appearing where enough of it has collected. paths are least-cost routes between
+      a shoreline and a summit, and the <b>grade aversion</b> is what makes them break into
+      switchbacks instead of going straight up. plan views only.
     </div>
   </div>
 
@@ -350,7 +403,8 @@
     <h2>Keys</h2>
     <div class="hint">
       <kbd>R</kbd> roll seed &nbsp; <kbd>H</kbd> handles &nbsp; <kbd>C</kbd> clear nodes<br>
-      <kbd>1</kbd>–<kbd>4</kbd> line mode &nbsp; <kbd>D</kbd> drift &nbsp; <kbd>space</kbd> re-render<br>
+      <kbd>1</kbd>–<kbd>4</kbd> line mode &nbsp; <kbd>D</kbd> drift &nbsp; <kbd>M</kbd> wire mesh<br>
+      <kbd>S</kbd> fill sea &nbsp; <kbd>space</kbd> re-render<br>
       <kbd>del</kbd> delete selected node &nbsp; <kbd>esc</kbd> deselect
     </div>
   </div>
@@ -372,6 +426,24 @@ var smoothstep = function (e0, e1, x) {
   var t = clamp((x - e0) / (e1 - e0), 0, 1);
   return t * t * (3 - 2 * t);
 };
+
+/* a cheap deterministic hash and the smooth 1-d value noise built on it.
+   the pen and the strata both want something that never repeats, which a sum
+   of sines does after a few hundred pixels. */
+function hash1(x) {
+  var v = Math.sin(x * 127.1 + 311.7) * 43758.5453123;
+  return v - Math.floor(v);
+}
+function vnoise1(x) {
+  var i = Math.floor(x), f = x - i;
+  var u = f * f * (3 - 2 * f);
+  return lerp(hash1(i), hash1(i + 1), u) * 2 - 1;
+}
+/* three octaves of it - the shape a hand actually makes: a slow wander with a
+   finer tremor riding on top */
+function fbm1(x) {
+  return vnoise1(x) * 0.54 + vnoise1(x * 2.13 + 17.3) * 0.29 + vnoise1(x * 4.51 + 41.1) * 0.17;
+}
 
 function mulberry32(a) {
   return function () {
@@ -421,12 +493,20 @@ var P = {
   island: 0.4, tilt: 0.0,
   erosion: 0.35, smooth: 1, terrace: 0, terraceSteps: 9, sea: 0.3, res: 220,
 
-  weight: 0.8, weightVar: 0.4, wobble: 0.7, wobbleScale: 0.18, opacity: 0.92,
+  weight: 0.8, weightVar: 0.4, wobble: 0.7, wobbleScale: 0.18, wobbleDrift: 0.45,
+  opacity: 0.92, seaFill: false, seaFillAlpha: 1,
+
+  rivers: false, riverThresh: 0.55, riverWeight: 1.4,
+  paths: false, pathCount: 2, pathGrade: 0.55, pathWeight: 1.4, pathDash: 5,
 
   levels: 26, indexEvery: 5, indexWeight: 2.4, bathyLevels: 7,
   coastWeight: 2.6, bathy: true, coast: true, smoothLines: true,
 
   rows: 64, relief: 0.5, skew: 0, spread: 0.86, detail: 1.4,
+  meshMode: false, meshSquare: true, meshCols: 72,
+  plateW: 1, stackConv: 0, stackPersp: 0, stackTurn: 0, stackZoom: 1, stackY: 0,
+  strata: false, strataSide: true, strataCount: 8, strataDepth: 0.24,
+  strataDamp: 0.55, strataWave: 0.35, strataHatch: 0,
 
   seeds: 1400, flowStep: 1.2, flowLen: 150, flowAngle: 0, flowMin: 16,
   taper: 0.6, flowSea: true,
@@ -461,6 +541,8 @@ var SPECS = [
   { id: 'weightVar',   grp: 'style', label: 'weight range',  min: 0, max: 1,   step: 0.01, d: 2, dirty: 'lines' },
   { id: 'wobble',      grp: 'style', label: 'pen wobble',    min: 0, max: 5,   step: 0.05, d: 2, dirty: 'lines' },
   { id: 'wobbleScale', grp: 'style', label: 'wobble scale',  min: 0.02, max: 0.8, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'wobbleDrift', grp: 'style', label: 'hand drift',   min: 0, max: 1,   step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'seaFillAlpha', grp: 'style', label: 'sea opacity', min: 0.1, max: 1, step: 0.01, d: 2, dirty: 'lines' },
   { id: 'opacity',     grp: 'style', label: 'ink opacity',   min: 0.1, max: 1, step: 0.01, d: 2, dirty: 'lines' },
 
   /* --- contour ------------------------------------------------------ */
@@ -477,6 +559,22 @@ var SPECS = [
   { id: 'skew',   grp: 'ridge', label: 'shear',       min: -0.7, max: 0.7, step: 0.01, d: 2, dirty: 'lines' },
   { id: 'detail', grp: 'ridge', label: 'sample step',  min: 0.5, max: 5, step: 0.1, d: 1, dirty: 'lines' },
 
+  /* --- the plate the profile stack stands on ------------------------- */
+  { id: 'plateW',     grp: 'plate', label: 'plate width', min: 0.2, max: 1.4, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'stackConv',  grp: 'plate', label: 'convergence', min: 0, max: 0.9, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'stackPersp', grp: 'plate', label: 'depth ease',  min: -1.5, max: 3, step: 0.05, d: 2, dirty: 'lines' },
+  { id: 'stackTurn',  grp: 'plate', label: 'plate turn',  min: -180, max: 180, step: 1, d: 0, dirty: 'lines' },
+  { id: 'stackZoom',  grp: 'plate', label: 'sample zoom', min: 0.25, max: 2.5, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'stackY',     grp: 'plate', label: 'plate rise',  min: -1, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'meshCols',   grp: 'mesh',  label: 'mesh columns', min: 4, max: 240, step: 1, d: 0, dirty: 'lines' },
+
+  /* --- strata -------------------------------------------------------- */
+  { id: 'strataCount', grp: 'strata', label: 'beds',        min: 1, max: 24, step: 1, d: 0, dirty: 'lines' },
+  { id: 'strataDepth', grp: 'strata', label: 'block depth', min: 0.05, max: 0.7, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'strataDamp',  grp: 'strata', label: 'flattening',  min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'strataWave',  grp: 'strata', label: 'folding',     min: 0, max: 1.5, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'strataHatch', grp: 'strata', label: 'hatch',       min: 0, max: 14, step: 0.5, d: 1, dirty: 'lines' },
+
   /* --- flow ---------------------------------------------------------- */
   { id: 'seeds',     grp: 'flow', label: 'seeds',      min: 100, max: 8000, step: 50, d: 0, dirty: 'lines' },
   { id: 'flowStep',  grp: 'flow', label: 'step',       min: 0.4, max: 4, step: 0.1, d: 1, dirty: 'lines' },
@@ -490,6 +588,14 @@ var SPECS = [
   { id: 'hachLen',     grp: 'hachure', label: 'length',    min: 0.2, max: 3, step: 0.05, d: 2, dirty: 'lines' },
   { id: 'hachSlope',   grp: 'hachure', label: 'slope gate', min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
   { id: 'hachJitter',  grp: 'hachure', label: 'jitter',    min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+
+  /* --- rivers & paths --------------------------------------------------- */
+  { id: 'riverThresh', grp: 'overlay', label: 'river density',  min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'riverWeight', grp: 'overlay', label: 'river weight',   min: 0.3, max: 5, step: 0.05, d: 2, dirty: 'lines' },
+  { id: 'pathCount',   grp: 'overlay', label: 'paths',          min: 1, max: 8, step: 1, d: 0, dirty: 'lines' },
+  { id: 'pathGrade',   grp: 'overlay', label: 'grade aversion', min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'pathWeight',  grp: 'overlay', label: 'path weight',    min: 0.3, max: 5, step: 0.05, d: 2, dirty: 'lines' },
+  { id: 'pathDash',    grp: 'overlay', label: 'dash',           min: 0, max: 20, step: 0.5, d: 1, dirty: 'lines' },
 
   /* --- node defaults / selected node ----------------------------------- */
   { id: 'nodeAmp',    grp: 'node', label: 'height',  min: -1.6, max: 1.6, step: 0.01, d: 2, dirty: 'node' },
@@ -518,7 +624,11 @@ var PALETTES = [
   { name: 'chlorophyll', bg: '#07100b', light: false, flat: '#b5cc6a',
     stops: ['#1d3a24', '#4c7a3a', '#b5cc6a', '#f2f7d8'], sea: '#0b1d18', node: '#ff8b6b' },
   { name: 'india ink', bg: '#0b0b0c', light: false, flat: '#e8e8e8',
-    stops: ['#4a4a4c', '#8b8b8e', '#c8c8ca', '#ffffff'], sea: '#141416', node: '#ff5d6c' }
+    stops: ['#4a4a4c', '#8b8b8e', '#c8c8ca', '#ffffff'], sea: '#141416', node: '#ff5d6c' },
+  { name: 'ultramarine', bg: '#f4f2ec', light: true, flat: '#1a35c8',
+    stops: ['#aebaea', '#5a72dd', '#1a35c8', '#080f4a'], sea: '#c8d1f1', node: '#d8402f' },
+  { name: 'kraft', bg: '#c9ae8c', light: true, flat: '#191713',
+    stops: ['#6f5f4b', '#443a2d', '#211d17', '#000000'], sea: '#ae9375', node: '#ef5b1d' }
 ];
 
 function hex2rgb(h) {
@@ -530,6 +640,15 @@ function rampColor(pal, t, alpha) {
   var a = hex2rgb(s[i]), b = hex2rgb(s[i + 1]);
   var r = Math.round(lerp(a[0], b[0], f)), g = Math.round(lerp(a[1], b[1], f)), bl = Math.round(lerp(a[2], b[2], f));
   return 'rgba(' + r + ',' + g + ',' + bl + ',' + alpha.toFixed(3) + ')';
+}
+/* the two named colours a palette carries besides the ramp */
+function seaColor(alpha) {
+  var c = hex2rgb(PALETTES[P.palette].sea);
+  return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + alpha.toFixed(3) + ')';
+}
+function nodeColor(alpha) {
+  var c = hex2rgb(PALETTES[P.palette].node);
+  return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + alpha.toFixed(3) + ')';
 }
 function flatColor(pal, alpha) {
   var c = hex2rgb(pal.flat);
@@ -565,6 +684,7 @@ function kernel(k, t) {
 
 function buildField(res) {
   var t0 = performance.now();
+  fieldVer++;
   aspect = W / H;
   gh = Math.max(48, Math.round(res));
   gw = Math.max(48, Math.round(res * aspect));
@@ -833,9 +953,68 @@ function stitch(segs) {
 /* marching squares over the grid; edge points are computed from the same two
    corner values on both sides of a shared edge, so neighbouring cells produce
    bit-identical endpoints and the stitcher can match them exactly. */
-function isoSegments(level) {
+function msCell(segs, level, i, j, sx, sy, v00, v10, v01, v11) {
+  var c = 0;
+  if (v00 > level) c |= 1;
+  if (v10 > level) c |= 2;
+  if (v11 > level) c |= 4;
+  if (v01 > level) c |= 8;
+  if (c === 0 || c === 15) return;
+
+  var t, e0x, e0y, e1x, e1y, e2x, e2y, e3x, e3y;
+  /* top edge  v00 -> v10 */
+  t = (v10 - v00); t = t === 0 ? 0.5 : (level - v00) / t;
+  e0x = (i + t) * sx; e0y = j * sy;
+  /* right edge v10 -> v11 */
+  t = (v11 - v10); t = t === 0 ? 0.5 : (level - v10) / t;
+  e1x = (i + 1) * sx; e1y = (j + t) * sy;
+  /* bottom edge v01 -> v11 */
+  t = (v11 - v01); t = t === 0 ? 0.5 : (level - v01) / t;
+  e2x = (i + t) * sx; e2y = (j + 1) * sy;
+  /* left edge v00 -> v01 */
+  t = (v01 - v00); t = t === 0 ? 0.5 : (level - v00) / t;
+  e3x = i * sx; e3y = (j + t) * sy;
+
+  switch (c) {
+    case 1: case 14: segs.push(e3x, e3y, e0x, e0y); break;
+    case 2: case 13: segs.push(e0x, e0y, e1x, e1y); break;
+    case 3: case 12: segs.push(e3x, e3y, e1x, e1y); break;
+    case 4: case 11: segs.push(e1x, e1y, e2x, e2y); break;
+    case 6: case 9:  segs.push(e0x, e0y, e2x, e2y); break;
+    case 7: case 8:  segs.push(e3x, e3y, e2x, e2y); break;
+    case 5:
+      if ((v00 + v10 + v01 + v11) * 0.25 > level) { segs.push(e0x, e0y, e1x, e1y); segs.push(e2x, e2y, e3x, e3y); }
+      else { segs.push(e3x, e3y, e0x, e0y); segs.push(e1x, e1y, e2x, e2y); }
+      break;
+    case 10:
+      if ((v00 + v10 + v01 + v11) * 0.25 > level) { segs.push(e3x, e3y, e0x, e0y); segs.push(e1x, e1y, e2x, e2y); }
+      else { segs.push(e0x, e0y, e1x, e1y); segs.push(e2x, e2y, e3x, e3y); }
+      break;
+  }
+}
+
+/* with pad set the grid is walked one cell wider on every side, with the
+   outside held far below the level.  that closes every loop that would
+   otherwise run off the plate - a filled region needs closed boundaries, and
+   an open polyline is not a shape. */
+var MS_OUT = -1e4;
+function fpad(i, j) {
+  if (i < 0 || j < 0 || i >= gw || j >= gh) return MS_OUT;
+  return field[j * gw + i];
+}
+
+function isoSegments(level, pad) {
   var segs = [], i, j;
   var sx = W / (gw - 1), sy = H / (gh - 1);
+
+  if (pad) {
+    for (j = -1; j < gh; j++) {
+      for (i = -1; i < gw; i++) {
+        msCell(segs, level, i, j, sx, sy, fpad(i, j), fpad(i + 1, j), fpad(i, j + 1), fpad(i + 1, j + 1));
+      }
+    }
+    return segs;
+  }
 
   for (j = 0; j < gh - 1; j++) {
     var row = j * gw, row2 = row + gw;
@@ -848,37 +1027,7 @@ function isoSegments(level) {
       if (v11 > level) c |= 4;
       if (v01 > level) c |= 8;
       if (c === 0 || c === 15) continue;
-
-      var t, e0x, e0y, e1x, e1y, e2x, e2y, e3x, e3y;
-      /* top edge  v00 -> v10 */
-      t = (v10 - v00); t = t === 0 ? 0.5 : (level - v00) / t;
-      e0x = (i + t) * sx; e0y = j * sy;
-      /* right edge v10 -> v11 */
-      t = (v11 - v10); t = t === 0 ? 0.5 : (level - v10) / t;
-      e1x = (i + 1) * sx; e1y = (j + t) * sy;
-      /* bottom edge v01 -> v11 */
-      t = (v11 - v01); t = t === 0 ? 0.5 : (level - v01) / t;
-      e2x = (i + t) * sx; e2y = (j + 1) * sy;
-      /* left edge v00 -> v01 */
-      t = (v01 - v00); t = t === 0 ? 0.5 : (level - v00) / t;
-      e3x = i * sx; e3y = (j + t) * sy;
-
-      switch (c) {
-        case 1: case 14: segs.push(e3x, e3y, e0x, e0y); break;
-        case 2: case 13: segs.push(e0x, e0y, e1x, e1y); break;
-        case 3: case 12: segs.push(e3x, e3y, e1x, e1y); break;
-        case 4: case 11: segs.push(e1x, e1y, e2x, e2y); break;
-        case 6: case 9:  segs.push(e0x, e0y, e2x, e2y); break;
-        case 7: case 8:  segs.push(e3x, e3y, e2x, e2y); break;
-        case 5:
-          if ((v00 + v10 + v01 + v11) * 0.25 > level) { segs.push(e0x, e0y, e1x, e1y); segs.push(e2x, e2y, e3x, e3y); }
-          else { segs.push(e3x, e3y, e0x, e0y); segs.push(e1x, e1y, e2x, e2y); }
-          break;
-        case 10:
-          if ((v00 + v10 + v01 + v11) * 0.25 > level) { segs.push(e3x, e3y, e0x, e0y); segs.push(e1x, e1y, e2x, e2y); }
-          else { segs.push(e0x, e0y, e1x, e1y); segs.push(e2x, e2y, e3x, e3y); }
-          break;
-      }
+      msCell(segs, level, i, j, sx, sy, v00, v10, v01, v11);
     }
   }
   return segs;
@@ -949,36 +1098,101 @@ function pushIso(out, level, w, colour) {
   }
 }
 
-/* profile stack.  rows are drawn front to back and a horizon buffer keeps
-   whatever a nearer ridge already covered from being drawn again - the
-   hidden-line removal that makes a stack of sections read as a solid landform. */
+/* ==================================================================
+   5a.  the plate the profile stack stands on
+
+   every point of the stack - the rows, the rungs of the wire mesh, the beds
+   of the strata block - is placed by these few functions, so the whole thing
+   stays welded together however the plate is turned, squeezed or leant back.
+   with the shape sliders at their defaults it is the plain stack of parallel
+   sections it always was.
+   ================================================================== */
+var PJ = { top: 0, depth: 0, relief: 0, plate: 0, cx: 0, shear: 0, ca: 1, sa: 0, zoom: 1 };
+
+function plateSetup() {
+  PJ.depth  = H * 0.82 * P.spread;
+  PJ.top    = H * 0.10 + (H * 0.82 - PJ.depth) * 0.5 + P.stackY * H * 0.22;
+  PJ.relief = H * 0.5 * P.relief;
+  PJ.plate  = W * P.plateW;
+  PJ.cx     = W * 0.5;
+  PJ.shear  = P.skew * H * 0.45;
+  var th = P.stackTurn * Math.PI / 180;
+  PJ.ca = Math.cos(th); PJ.sa = Math.sin(th);
+  PJ.zoom = P.stackZoom;
+}
+
+/* how the rows are spaced in depth.  0 keeps them even; positive crowds them
+   toward the back the way distance would, negative crowds them at the front. */
+function plateEase(v) {
+  var k = P.stackPersp;
+  if (k > -0.0001 && k < 0.0001) return v;
+  if (k > 0) return v * (1 + k * v) / (1 + k);
+  var a = -k;
+  return v * (1 + a) / (1 + a * v);
+}
+
+/* (u, v) walks the unit square of the plate.  it is turned and zoomed in map
+   space, so the sections can be cut across the ground at any angle instead of
+   always due east. */
+var pmOut = [0, 0], ppOut = [0, 0];
+function plateMap(u, v) {
+  var lx = (u - 0.5) * aspect * PJ.zoom, ly = (v - 0.5) * PJ.zoom;
+  pmOut[0] = aspect * 0.5 + lx * PJ.ca - ly * PJ.sa;
+  pmOut[1] = 0.5 + lx * PJ.sa + ly * PJ.ca;
+  return pmOut;
+}
+function plateHeight(u, v) {
+  var m = plateMap(u, v);
+  return sampleH(m[0], m[1]);
+}
+/* and the projection: shear leans the stack, convergence narrows the far rows
+   and foreshortens their relief with them */
+function plateProject(u, v, h) {
+  var e = plateEase(v);
+  var sc = lerp(1 - P.stackConv, 1, e);
+  ppOut[0] = PJ.cx + (u - 0.5) * PJ.plate * sc + (v - 0.5) * PJ.shear;
+  ppOut[1] = PJ.top + e * PJ.depth - (Math.max(h, P.sea) - P.sea) * PJ.relief * sc;
+  return ppOut;
+}
+function plateBase(v) { return PJ.top + plateEase(v) * PJ.depth; }
+function plateFloor(v) { return plateBase(v) + P.strataDepth * H; }
+
+/* square cells: the rungs are spaced to match what the rows measure on screen,
+   so the mesh comes out as squares rather than ribbons */
+function meshColumns(rows) {
+  if (!P.meshSquare) return clamp(P.meshCols | 0, 4, 400);
+  var gap = PJ.depth / Math.max(1, rows - 1);
+  return clamp(Math.round(PJ.plate / Math.max(2, gap)), 4, 400);
+}
+
+/* ==================================================================
+   5b.  profile stack.  rows are drawn front to back and a horizon buffer
+   keeps whatever a nearer ridge already covered from being drawn again - the
+   hidden-line removal that makes a stack of sections read as a solid landform.
+   ================================================================== */
 function genProfiles() {
+  plateSetup();
   var out = [];
   var rows = P.rows | 0;
   var step = Math.max(0.5, P.detail);
   var cols = Math.max(24, Math.round(W / step));
+  var occl = P.occlusion | 0;
+  var span = Math.max(0.001, 1 - P.sea);
   var horizon = new Float32Array(Math.ceil(W) + 2);
-  var i;
+  var i, r;
   for (i = 0; i < horizon.length; i++) horizon[i] = 1e9;
 
-  var top = H * 0.10, depth = H * 0.82 * P.spread;
-  var reliefPx = H * 0.5 * P.relief;
-  var occl = P.occlusion | 0;
+  var mcols = meshColumns(rows);
 
-  for (var r = rows - 1; r >= 0; r--) {
+  for (r = rows - 1; r >= 0; r--) {
     var v = rows === 1 ? 0.5 : r / (rows - 1);
-    var my = v;
-    var baseY = top + (H * 0.82 - depth) * 0.5 + v * depth;
-    var shear = (v - 0.5) * P.skew * H * 0.45;
-
     var run = null, runs = [];
+
     for (i = 0; i <= cols; i++) {
       var u = i / cols;
-      var mx = u * aspect;
-      var h = sampleH(mx, my);
-      var hs = Math.max(h, P.sea);
-      var x = u * W + shear;
-      var y = baseY - (hs - P.sea) * reliefPx;
+      var h = plateHeight(u, v);
+      var pp = plateProject(u, v, h);
+      var x = pp[0], y = pp[1];
 
       var vis = true;
       if (occl === 1) {
@@ -1000,7 +1214,6 @@ function genProfiles() {
     /* each visible run is tinted by the ground it actually crosses, so a
        shoulder that clears a nearer ridge comes up bright while the flats stay
        down in the dark end of the ramp */
-    var span = Math.max(0.001, 1 - P.sea);
     for (i = 0; i < runs.length; i++) {
       var rr = runs[i];
       if (rr.pts.length < 4) continue;
@@ -1008,11 +1221,162 @@ function genProfiles() {
       out.push({
         pts: rr.pts, w: styleWeight(t), c: styleColor(t), closed: false,
         fill: occl === 0 ? pal().bg : null,
-        fillBase: baseY + H
+        fillBase: plateBase(v) + H
       });
     }
+
+    if (P.meshMode && r > 0) genRungs(out, r, rows, mcols, horizon, occl, span);
   }
+
+  /* solid mode paints, so it has to go back to front - the reverse of the
+     order the horizon buffer wants */
+  if (occl === 0) out.reverse();
+  if (P.strata) genStrata(out, cols);
   return out;
+}
+
+/* the cross wires.  a rung spans the strip between one row and the row behind
+   it, so the horizon buffer to test it against is the one standing after the
+   near row has been laid down and before the far one is - which is exactly
+   where the row loop is when it calls this. */
+function genRungs(out, r, rows, mcols, horizon, occl, span) {
+  var v0 = r / (rows - 1), v1 = (r - 1) / (rows - 1);
+  var sub = 6;
+  var xs = [], ys = [], hs = [], vis = [];
+  var c, s, u, v, h, pp;
+
+  for (c = 0; c <= mcols; c++) {
+    u = c / mcols;
+    xs.length = 0; ys.length = 0; hs.length = 0; vis.length = 0;
+
+    for (s = 0; s <= sub; s++) {
+      v = lerp(v0, v1, s / sub);
+      h = plateHeight(u, v);
+      pp = plateProject(u, v, h);
+      var x = pp[0], y = pp[1];
+      var ok = x > -50 && x < W + 50;
+      if (ok && occl === 1) {
+        var b = clamp(Math.round(x), 0, horizon.length - 1);
+        ok = y < horizon[b] - 0.05;
+      }
+      xs.push(x); ys.push(y); hs.push(h); vis.push(ok);
+    }
+    /* the foot of a rung sits exactly on the row in front of it and so always
+       fails the horizon test.  weld it back on whenever the step above it is
+       visible, otherwise the mesh comes apart at every row it crosses. */
+    if (vis[1]) vis[0] = true;
+
+    var run = null, hSum = 0, n = 0;
+    for (s = 0; s <= sub; s++) {
+      if (vis[s]) {
+        if (!run) run = [];
+        run.push(xs[s], ys[s]); hSum += hs[s]; n++;
+      }
+      if (run && (!vis[s] || s === sub)) {
+        if (run.length >= 4) {
+          var t = clamp((hSum / n - P.sea) / span, 0, 1);
+          out.push({ pts: run, w: styleWeight(t) * 0.92, c: styleColor(t), closed: false, fill: null });
+        }
+        run = null; hSum = 0; n = 0;
+      }
+    }
+  }
+}
+
+/* ==================================================================
+   5c.  strata.  the front of the plate is cut away and the ground under it
+   drawn as a stack of beds.  each bed carries the shape of the surface above
+   it, flatter the deeper it lies, with a slow fold of its own on top - which
+   is what a section looks like once the layers have been squeezed.
+   ================================================================== */
+function genStrata(out, cols) {
+  var K = Math.max(1, P.strataCount | 0);
+  /* beds are not all the same thickness, so the cut reads as rock rather than
+     as ruled paper */
+  var fs = [0], acc = 0, k;
+  for (k = 0; k < K; k++) { acc += 0.55 + hash1(k * 7.31 + 3.1) * 0.9; fs.push(acc); }
+  for (k = 0; k <= K; k++) fs[k] /= acc;
+
+  genFace(out, K, fs, cols, -1);
+
+  if (P.strataSide) {
+    /* whichever flank the shear has swung into view - and both of them once
+       the plate converges */
+    var both = P.stackConv > 0.04;
+    if (P.skew >= 0.02 || both) genFace(out, K, fs, cols, 1);
+    if (P.skew <= -0.02 || both) genFace(out, K, fs, cols, 0);
+  }
+}
+
+/* side < 0 cuts the front of the block; otherwise it cuts the flank at u=side */
+function genFace(out, K, fs, cols, side) {
+  var n = clamp(Math.round(cols * 0.6), 32, 420);
+  var fx = new Float64Array(n + 1), fy = new Float64Array(n + 1), fb = new Float64Array(n + 1);
+  var prev = new Float64Array(n + 1), cur = new Float64Array(n + 1);
+  var i, k, sumT = 0, sumB = 0;
+
+  for (i = 0; i <= n; i++) {
+    var q = i / n;
+    var u = side < 0 ? q : side, v = side < 0 ? 1 : q;
+    var pp = plateProject(u, v, plateHeight(u, v));
+    fx[i] = pp[0]; fy[i] = pp[1]; fb[i] = plateFloor(v);
+    prev[i] = fy[i];
+    sumT += fy[i]; sumB += fb[i];
+  }
+  var drop = Math.max(1, (sumB - sumT) / (n + 1));
+
+  /* the flank's top edge is a cut, not a section, so nothing else draws it */
+  if (side >= 0) {
+    var edge = [];
+    for (i = 0; i <= n; i++) edge.push(fx[i], fy[i]);
+    out.push({ pts: edge, w: P.weight * 1.3, c: styleColor(0.85), closed: false, fill: null });
+  }
+
+  for (k = 1; k <= K; k++) {
+    var f = fs[k];
+    /* a bed sits either parallel to the surface, keeping its thickness, or
+       levels off toward the floor.  flattening slides between the two. */
+    var mix = clamp(P.strataDamp * Math.pow(f, 0.6), 0, 1);
+    var pts = [];
+    for (i = 0; i <= n; i++) {
+      var par = fy[i] + f * drop;
+      var flat = lerp(fy[i], fb[i], f);
+      var y = lerp(par, flat, mix);
+      if (k < K && P.strataWave > 0) {
+        y += P.strataWave * drop * 0.09 * (1 - f * 0.5) *
+             noise(fx[i] * 0.006 + k * 11.7, k * 5.3 + 2.1);
+      }
+      if (k === K) y = fb[i];
+      if (y < prev[i] + 0.4) y = prev[i] + 0.4;
+      if (y > fb[i]) y = fb[i];
+      cur[i] = y;
+      pts.push(fx[i], y);
+    }
+
+    var tc = clamp(0.86 - f * 0.74, 0, 1);
+    out.push({
+      pts: pts, w: P.weight * (k === K ? 1.9 : 1.05),
+      c: styleColor(tc), closed: false, fill: null
+    });
+
+    /* every other bed is ruled through, the way a section is shaded */
+    if (P.strataHatch > 0.05 && (k % 2) === 1) {
+      var dx = Math.abs(fx[n] - fx[0]) / n;
+      var stride = Math.max(1, Math.round(P.strataHatch / Math.max(0.4, dx)));
+      for (i = 0; i <= n; i += stride) {
+        if (cur[i] - prev[i] < 1.6) continue;
+        out.push({
+          pts: [fx[i], prev[i] + 0.5, fx[i], cur[i] - 0.5],
+          w: P.weight * 0.55, c: styleColor(clamp(tc + 0.12, 0, 1)), closed: false, fill: null
+        });
+      }
+    }
+    for (i = 0; i <= n; i++) prev[i] = cur[i];
+  }
+
+  /* the two vertical edges of the cut */
+  out.push({ pts: [fx[0], fy[0], fx[0], fb[0]], w: P.weight * 1.6, c: styleColor(0.6), closed: false, fill: null });
+  out.push({ pts: [fx[n], fy[n], fx[n], fb[n]], w: P.weight * 1.6, c: styleColor(0.6), closed: false, fill: null });
 }
 
 function genFlow() {
@@ -1105,25 +1469,449 @@ function genHachure() {
   return out;
 }
 
-/* hand wobble: a slow 1-d noise pushed along each point's normal.  it is applied
-   after generation so every mode gets the same pen. */
+/* ==================================================================
+   5d.  the sea as a solid
+
+   the coastline is a level set, and a level set that runs off the plate is an
+   open curve - no good for filling.  walking the grid one cell wider with the
+   outside held below sea level closes every loop, and the whole set filled
+   even-odd against the page gives water outside the land and back again
+   inside a lake.
+   ================================================================== */
+function genSeaFill() {
+  if (P.sea <= 0.002) return null;
+  var polys = stitch(isoSegments(P.sea, true)), keep = [], i;
+  for (i = 0; i < polys.length; i++) {
+    var pts = polys[i].pts;
+    if (pts.length < 8) continue;
+    if (P.smoothLines) pts = chaikin(pts, true);
+    keep.push(pts);
+  }
+  if (!keep.length) return null;
+  return {
+    pts: [], polys: keep, w: 0, closed: true, fill: null,
+    c: seaColor(P.seaFillAlpha), seaFill: true
+  };
+}
+
+/* ==================================================================
+   5e.  drainage: rivers pulled out of the ground rather than drawn on it
+
+   every cell sends its water to the lowest of its eight neighbours.  walk the
+   cells from the summit down, adding each one's load to its outlet, and what
+   comes out is the catchment each cell carries.  where that crosses a
+   threshold the ground has a channel in it, and the channels meet into a
+   network on their own - the branching is the terrain's, not a rule's.
+   ================================================================== */
+var fieldVer = 0, drainCache = null, drainVer = -1;
+var NX8 = [1, -1, 0, 0, 1, 1, -1, -1], NY8 = [0, 0, 1, -1, 1, -1, 1, -1];
+var ND8 = [1, 1, 1, 1, 1.41421, 1.41421, 1.41421, 1.41421];
+
+function drainage() {
+  if (drainCache && drainVer === fieldVer) return drainCache;
+  var n = gw * gh, i, j, k, idx, x, y, nb;
+
+  /* first, fill the hollows.  droplet erosion leaves the ground pitted, and a
+     stream that runs into a pit simply stops there - the network comes out as
+     a scatter of stubs.  flooding the plate inward from its rim, raising each
+     cell to just over the lowest lip it can be reached across, gives every
+     cell a way down to the edge while moving the ground as little as it can.
+     the sliver added on top of each lip is what keeps the flats draining. */
+  var fill = new Float64Array(n);
+  var done = new Uint8Array(n);
+  var hc = [], hi = [];
+
+  for (j = 0; j < gh; j++) {
+    for (i = 0; i < gw; i++) {
+      if (i > 0 && j > 0 && i < gw - 1 && j < gh - 1) continue;
+      idx = j * gw + i;
+      fill[idx] = field[idx];
+      done[idx] = 1;
+      heapPush(hc, hi, field[idx], idx);
+    }
+  }
+  while (hc.length) {
+    idx = heapPop(hc, hi);
+    var lip = fill[idx];
+    var cx = idx % gw, cy = (idx / gw) | 0;
+    for (k = 0; k < 8; k++) {
+      x = cx + NX8[k]; y = cy + NY8[k];
+      if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+      nb = y * gw + x;
+      if (done[nb]) continue;
+      done[nb] = 1;
+      /* the step added on top of the lip only has to be big enough to keep the
+         surface strictly descending in double precision.  make it any larger
+         and it piles up across a wide flat into a gradient of its own, which
+         the water then follows out in a dead straight line. */
+      fill[nb] = field[nb] > lip ? field[nb] : lip + 1e-12;
+      heapPush(hc, hi, fill[nb], nb);
+    }
+  }
+
+  /* a plain is the other place eight directions betray themselves: with no
+     slope to follow the water leaves along whichever of the eight it was
+     handed, and the channel comes out ruled.  a very small noise field, far
+     below any real gradient but well above the flats, gives it something to
+     lean on and the reach wanders instead. */
+  var wig = new Float32Array(n);
+  for (j = 0; j < gh; j++) {
+    for (i = 0; i < gw; i++) wig[j * gw + i] = 3e-5 * noise(i * 0.06 + 5.1, j * 0.06 - 2.3);
+  }
+
+  /* then the outlets.  the filled surface only ever descends, so any step onto
+     a lower cell is safe from running in a circle - which leaves the choice
+     between them free.  taking the ground as it stood before the flooding into
+     that choice is what stops a stream crossing a filled basin as a ruled
+     line: inside the flat the sliver of fill is worth nothing beside the
+     original relief, and the water finds the old valley floor again. */
+  var down = new Int32Array(n), acc = new Float32Array(n);
+  for (j = 0; j < gh; j++) {
+    for (i = 0; i < gw; i++) {
+      idx = j * gw + i;
+      acc[idx] = 1;
+      var h0 = fill[idx], g0 = field[idx] + wig[idx], best = -1, bestS = -Infinity;
+      for (k = 0; k < 8; k++) {
+        x = i + NX8[k]; y = j + NY8[k];
+        if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+        nb = y * gw + x;
+        if (fill[nb] >= h0) continue;
+        var sl = (h0 - fill[nb] + 0.35 * (g0 - field[nb] - wig[nb])) / ND8[k];
+        if (sl > bestS) { bestS = sl; best = nb; }
+      }
+      down[idx] = best;
+    }
+  }
+
+  /* and the catchments: walking the cells from the top down, each one's load
+     lands on its outlet before that outlet is itself read */
+  var order = new Int32Array(n);
+  for (i = 0; i < n; i++) order[i] = i;
+  order.sort(function (a, b) { return fill[b] - fill[a]; });
+  for (i = 0; i < n; i++) {
+    idx = order[i];
+    if (down[idx] >= 0) acc[down[idx]] += acc[idx];
+  }
+
+  /* ground the flood had to raise by more than a hair is standing water.  the
+     hair matters: erosion leaves the whole plate finely pitted, and calling
+     every one of those a lake would take the streams apart. */
+  var flooded = new Uint8Array(n);
+  for (i = 0; i < n; i++) if (fill[i] > field[i] + 0.002) flooded[i] = 1;
+
+  drainCache = { acc: acc, down: down, flooded: flooded };
+  drainVer = fieldVer;
+  return drainCache;
+}
+
+function genRivers(out) {
+  if (!field || gw < 8) return;
+  var D = drainage(), acc = D.acc, down = D.down, flooded = D.flooded;
+  var n = gw * gh, idx, q;
+  var cut = Math.round(lerp(900, 14, clamp(P.riverThresh, 0, 1)));
+  var seen = new Uint8Array(n), fed = new Uint8Array(n);
+
+  /* a source is a channel cell that no other channel runs into.  starting only
+     from those, and stopping at the first cell already drawn, puts every reach
+     of the network down exactly once.  water arriving out of a lake does not
+     count as feeding, or the stream leaving the lake would never be a source
+     and never get drawn. */
+  for (idx = 0; idx < n; idx++) {
+    if (acc[idx] < cut || flooded[idx]) continue;
+    var d = down[idx];
+    if (d >= 0 && acc[d] >= cut) fed[d] = 1;
+  }
+
+  for (idx = 0; idx < n; idx++) {
+    if (acc[idx] < cut || fed[idx] || flooded[idx] || field[idx] < P.sea) continue;
+    /* a source sitting on the rim is an artefact of the flood, not a spring */
+    if ((idx % gw) < 2 || (idx % gw) > gw - 3 || idx < gw * 2 || idx > n - gw * 2) continue;
+
+    var cur = idx, cells = [], guard = 0;
+    while (cur >= 0 && guard++ < 40000) {
+      cells.push(cur);
+      if (field[cur] < P.sea) break;
+      if (seen[cur] && cells.length > 4) break;
+      seen[cur] = 1;
+      cur = down[cur];
+    }
+    emitReach(out, cells, flooded, acc, cut);
+  }
+}
+
+/* a reach that runs into a filled hollow is crossing a lake, and the line the
+   flood left behind in there is a ruled artefact rather than a channel.  cut
+   those stretches out - the stream ends at the shore and the outlet picks it
+   up again on the far side.  a hollow only a few cells across is a pit the
+   erosion left, not a lake, so the reach steps over it. */
+function emitReach(out, cells, flooded, acc, cut) {
+  var m = cells.length;
+  if (m < 10) return;
+  var keep = new Uint8Array(m), q, e, z;
+  for (q = 0; q < m; q++) keep[q] = flooded[cells[q]] ? 0 : 1;
+  q = 0;
+  while (q < m) {
+    if (keep[q]) { q++; continue; }
+    e = q; while (e < m && !keep[e]) e++;
+    if (e - q <= 4) for (z = q; z < e; z++) keep[z] = 1;
+    q = e;
+  }
+
+  var sx = W / (gw - 1), sy = H / (gh - 1);
+  var span = Math.max(0.001, 1 - P.sea);
+  q = 0;
+  while (q < m) {
+    if (!keep[q]) { q++; continue; }
+    e = q; while (e < m && keep[e]) e++;
+    if (e - q >= 8) pushReach(out, cells, q, e, acc, cut, sx, sy, span);
+    q = e;
+  }
+}
+
+function pushReach(out, cells, from, to, acc, cut, sx, sy, span) {
+  var pts = [], accs = [], hs = [], q, k;
+  for (q = from; q < to; q++) {
+    var c = cells[q];
+    pts.push((c % gw) * sx, ((c / gw) | 0) * sy);
+    accs.push(acc[c]); hs.push(field[c]);
+  }
+  pts = chaikin(chaikin(pts, false), false);
+
+  /* a channel grows as it gathers, so the weight climbs downstream with the
+     root of the catchment - the width a river actually puts on */
+  var chunks = clamp(Math.round(pts.length / 60), 2, 10);
+  var per = Math.ceil((pts.length / 2) / chunks);
+  for (k = 0; k < chunks; k++) {
+    var a0 = k * per * 2, a1 = Math.min(pts.length, (k + 1) * per * 2 + 2);
+    if (a1 - a0 < 4) continue;
+    var qi = Math.min(accs.length - 1, Math.floor(((k + 0.5) / chunks) * accs.length));
+    var t = clamp((hs[qi] - P.sea) / span, 0, 1);
+    out.push({
+      pts: pts.slice(a0, a1),
+      w: P.weight * P.riverWeight * clamp(0.55 + Math.sqrt(accs[qi] / cut) * 0.5, 0.55, 3.4),
+      c: styleColor(t), closed: false, fill: null
+    });
+  }
+}
+
+/* ==================================================================
+   5f.  paths: least-cost routes over the same ground
+
+   a trail is not a straight line and not a contour either - it is whatever
+   costs least to walk, and the cost of a step is its length times a penalty
+   that grows with the square of the grade.  turn the penalty up and the route
+   starts cutting switchbacks up a face on its own.
+   ================================================================== */
+function heapPush(hc, hi, c, i) {
+  var n = hc.length;
+  hc.push(c); hi.push(i);
+  while (n > 0) {
+    var pa = (n - 1) >> 1;
+    if (hc[pa] <= hc[n]) break;
+    var t = hc[pa]; hc[pa] = hc[n]; hc[n] = t;
+    var t2 = hi[pa]; hi[pa] = hi[n]; hi[n] = t2;
+    n = pa;
+  }
+}
+function heapPop(hc, hi) {
+  var top = hi[0], last = hc.length - 1;
+  hc[0] = hc[last]; hi[0] = hi[last];
+  hc.pop(); hi.pop();
+  var n = hc.length, i = 0;
+  while (true) {
+    var l = i * 2 + 1, r = l + 1, sm = i;
+    if (l < n && hc[l] < hc[sm]) sm = l;
+    if (r < n && hc[r] < hc[sm]) sm = r;
+    if (sm === i) break;
+    var t = hc[sm]; hc[sm] = hc[i]; hc[i] = t;
+    var t2 = hi[sm]; hi[sm] = hi[i]; hi[i] = t2;
+    i = sm;
+  }
+  return top;
+}
+
+/* a* with the heuristic leant on a little: a walker does not need the
+   provably cheapest route, and the search finishes in a fraction of the time */
+function routePath(src, dst, gradeK) {
+  var n = gw * gh;
+  var g = new Float32Array(n), prev = new Int32Array(n), done = new Uint8Array(n);
+  var i;
+  for (i = 0; i < n; i++) { g[i] = Infinity; prev[i] = -1; }
+  var hc = [], hi = [];
+  g[src] = 0;
+  heapPush(hc, hi, 0, src);
+
+  var tx = dst % gw, ty = (dst / gw) | 0;
+  var guard = 0, found = false;
+  while (hc.length && guard++ < 900000) {
+    var cur = heapPop(hc, hi);
+    if (cur === dst) { found = true; break; }
+    if (done[cur]) continue;
+    done[cur] = 1;
+    var cx = cur % gw, cy = (cur / gw) | 0, h0 = field[cur], gc = g[cur];
+
+    for (var k = 0; k < 8; k++) {
+      var x = cx + NX8[k], y = cy + NY8[k];
+      if (x < 0 || y < 0 || x >= gw || y >= gh) continue;
+      var nb = y * gw + x;
+      if (done[nb]) continue;
+      var d = ND8[k];
+      /* height is normalised over the whole plate, so scaling it by the grid
+         height puts a rise and a run in the same units */
+      var grade = Math.abs(field[nb] - h0) * gh / d;
+      var c = d * (1 + gradeK * grade * grade);
+      if (field[nb] < P.sea) c *= 90;
+      var ng = gc + c;
+      if (ng < g[nb]) {
+        g[nb] = ng; prev[nb] = cur;
+        var hx = x - tx, hy = y - ty;
+        heapPush(hc, hi, ng + Math.sqrt(hx * hx + hy * hy) * 1.25, nb);
+      }
+    }
+  }
+  if (!found) return null;
+  var route = [], c2 = dst;
+  while (c2 >= 0) { route.push(c2); c2 = prev[c2]; }
+  return route;
+}
+
+function genPaths(out) {
+  if (!field || gw < 24) return;
+  var rnd = mulberry32(P.seed * 2711 + 97);
+  var heads = [], peaks = [], i, j, idx;
+  var stride = Math.max(1, Math.round(gh / 90));
+  var hi = P.sea + (1 - P.sea) * 0.55;
+
+  for (j = 2; j < gh - 2; j += stride) {
+    for (i = 2; i < gw - 2; i += stride) {
+      idx = j * gw + i;
+      var h = field[idx];
+      if (h < P.sea) continue;
+      if (h < P.sea + 0.07) heads.push(idx);
+      if (h > hi && h >= field[idx - 1] && h >= field[idx + 1] &&
+          h >= field[idx - gw] && h >= field[idx + gw]) peaks.push(idx);
+    }
+  }
+  /* a plate with no waterline still has low ground to start from */
+  if (heads.length < 4) {
+    heads = [];
+    for (j = 2; j < gh - 2; j += stride) {
+      for (i = 2; i < gw - 2; i += stride) {
+        idx = j * gw + i;
+        if (field[idx] >= P.sea && field[idx] < P.sea + (1 - P.sea) * 0.28) heads.push(idx);
+      }
+    }
+  }
+  if (heads.length < 2) return;
+  peaks.sort(function (a, b) { return field[b] - field[a]; });
+
+  var count = clamp(P.pathCount | 0, 1, 8);
+  var gradeK = lerp(0.4, 16, clamp(P.pathGrade, 0, 1));
+  var far = (gw * 0.38) * (gw * 0.38);
+  var col = nodeColor(P.opacity);
+  var dash = P.pathDash > 0.2 ? [P.pathDash, P.pathDash * 1.5] : null;
+
+  for (var q = 0; q < count; q++) {
+    var src = heads[(rnd() * heads.length) | 0], dst = -1;
+
+    /* half the routes climb to a summit, half cross to a far shore */
+    if (peaks.length && (q % 2) === 0) {
+      dst = peaks[(rnd() * Math.min(peaks.length, 10)) | 0];
+    } else {
+      for (var a = 0; a < 50; a++) {
+        var cand = heads[(rnd() * heads.length) | 0];
+        var dx = (cand % gw) - (src % gw), dy = ((cand / gw) | 0) - ((src / gw) | 0);
+        if (dx * dx + dy * dy > far) { dst = cand; break; }
+      }
+    }
+    if (dst < 0 || dst === src) continue;
+
+    var route = routePath(src, dst, gradeK);
+    if (!route || route.length < 14) continue;
+
+    var sx = W / (gw - 1), sy = H / (gh - 1), pts = [];
+    for (i = 0; i < route.length; i += 2) {
+      pts.push((route[i] % gw) * sx, ((route[i] / gw) | 0) * sy);
+    }
+    if (pts.length < 8) continue;
+    pts = chaikin(chaikin(pts, false), false);
+    out.push({
+      pts: pts, w: P.weight * P.pathWeight, c: col,
+      closed: false, fill: null, dash: dash
+    });
+  }
+}
+
+/* ==================================================================
+   5g.  the pen
+
+   two different things push a drawn line off its ideal path.  the hand has a
+   tremor, which runs along the stroke and is a property of the line; the arm
+   and the sheet drift, which is a property of the place on the paper and so
+   is shared by every line that crosses it.  only the second one makes
+   neighbouring contours bend together instead of each wandering off alone,
+   which is what a stack of sines could never do.
+   ================================================================== */
+var penBuf = null;
+
+function wobblePts(pts, closed, idx) {
+  var n = pts.length;
+  if (n < 6) return;
+  if (!penBuf || penBuf.length < n) penBuf = new Float64Array(n + 64);
+  var k;
+  for (k = 0; k < n; k++) penBuf[k] = pts[k];
+
+  var amp = P.wobble;
+  var fq = P.wobbleScale * 0.35;      /* cycles per pixel of arc length */
+  var mix = clamp(P.wobbleDrift, 0, 1);
+  var ph = hash1(idx * 1.7 + 0.31) * 400;
+  var s = 0;
+
+  for (k = 0; k < n; k += 2) {
+    var px = penBuf[k], py = penBuf[k + 1];
+    /* a centred tangent - a backward difference alone makes the normal jitter
+       from point to point and the wobble with it */
+    var ax = k === 0 ? px : penBuf[k - 2], ay = k === 0 ? py : penBuf[k - 1];
+    var bx = k === n - 2 ? px : penBuf[k + 2], by = k === n - 2 ? py : penBuf[k + 3];
+    var tx = bx - ax, ty = by - ay;
+    var m = Math.sqrt(tx * tx + ty * ty) || 1;
+    tx /= m; ty /= m;
+    if (k > 0) {
+      var lx = px - penBuf[k - 2], ly = py - penBuf[k - 1];
+      s += Math.sqrt(lx * lx + ly * ly);
+    }
+
+    /* arc length, not point index: a dense polyline and a coarse one then
+       shake at the same wavelength instead of the same rate */
+    var trem = fbm1(s * fq + ph);
+    var sheet = noise(px * 0.006 + 31.7, py * 0.006 + 12.3);
+    var w = lerp(trem, trem * 0.4 + sheet * 1.35, mix);
+
+    /* and the shake itself breathes, so no stretch is as steady as a machine */
+    var env = 0.62 + 0.55 * (vnoise1(s * fq * 0.16 + ph * 0.37) * 0.5 + 0.5);
+    if (!closed && n >= 14) {
+      /* pens wander where they touch down and where they lift */
+      var edge = Math.min(k, n - 2 - k) * 0.5;
+      env *= 1 + 0.55 / (1 + edge * 0.4);
+    }
+
+    var d = w * amp * env;
+    /* a hesitation along the stroke as well - the hand slows and catches up */
+    var dt = fbm1(s * fq * 0.55 + ph + 55.3) * amp * 0.3;
+    pts[k] = px - ty * d + tx * dt;
+    pts[k + 1] = py + tx * d + ty * dt;
+  }
+}
+
 function applyWobble(ls) {
   if (P.wobble <= 0.001) return;
-  var amp = P.wobble, fq = P.wobbleScale;
   for (var i = 0; i < ls.length; i++) {
-    var pts = ls[i].pts, n = pts.length;
-    if (n < 4) continue;
-    var ph = i * 12.9898;
-    for (var k = 0; k < n; k += 2) {
-      var a = pts[k === 0 ? 2 : k - 2], b = pts[k === 0 ? 3 : k - 1];
-      var tx = pts[k] - a, ty = pts[k + 1] - b;
-      var m = Math.sqrt(tx * tx + ty * ty) || 1;
-      var nx = -ty / m, ny = tx / m;
-      var s = k * 0.5 * fq;
-      var w = Math.sin(s + ph) * 0.6 + Math.sin(s * 2.31 + ph * 1.7) * 0.3 + Math.sin(s * 4.7 + ph * 0.3) * 0.15;
-      pts[k] += nx * w * amp;
-      pts[k + 1] += ny * w * amp;
+    var L = ls[i];
+    if (L.polys) {
+      for (var q = 0; q < L.polys.length; q++) wobblePts(L.polys[q], true, i * 31 + q);
+      continue;
     }
+    wobblePts(L.pts, L.closed, i);
   }
 }
 
@@ -1134,6 +1922,22 @@ function generate() {
   else if (P.mode === 2) ls = genFlow();
   else if (P.mode === 3) ls = genHachure();
   else ls = genContours();
+
+  /* the sea and the two overlays are plan-view work: they live in map space,
+     which the profile stack has already folded away.  the drainage and the
+     route search are the two slowest things here and both read the whole grid,
+     so they sit out a drag or a drift the same way the grid resolution does */
+  if (P.mode !== 1) {
+    if (P.seaFill) {
+      var sf = genSeaFill();
+      if (sf) ls.unshift(sf);
+    }
+    if (!draftMode) {
+      if (P.rivers) genRivers(ls);
+      if (P.paths) genPaths(ls);
+    }
+  }
+
   applyWobble(ls);
   lines = ls;
   return performance.now() - t0;
@@ -1162,10 +1966,32 @@ function draw() {
 
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  var dashed = false;
 
   for (var i = 0; i < lines.length; i++) {
     var L = lines[i], pts = L.pts, n = pts.length;
+
+    /* the sea is the page minus the land: one path of the whole plate plus
+       every closed coastline, filled even-odd, so a lake inside an island
+       comes back out as water */
+    if (L.seaFill) {
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      for (var q = 0; q < L.polys.length; q++) {
+        var sp = L.polys[q];
+        ctx.moveTo(sp[0], sp[1]);
+        for (var m = 2; m < sp.length; m += 2) ctx.lineTo(sp[m], sp[m + 1]);
+        ctx.closePath();
+      }
+      ctx.fillStyle = L.c;
+      ctx.fill('evenodd');
+      continue;
+    }
+
     if (n < 4) continue;
+
+    if (L.dash) { ctx.setLineDash(L.dash); dashed = true; }
+    else if (dashed) { ctx.setLineDash([]); dashed = false; }
 
     if (L.fill) {
       ctx.beginPath();
@@ -1186,6 +2012,7 @@ function draw() {
     ctx.lineWidth = L.w;
     ctx.stroke();
   }
+  if (dashed) ctx.setLineDash([]);
 
   if (P.showNodes) drawNodes();
 }
@@ -1360,7 +2187,10 @@ function syncAll() {
   setToggle('btn-bathy', P.bathy); setToggle('btn-coast', P.coast);
   setToggle('btn-smoothlines', P.smoothLines); setToggle('btn-flowsea', P.flowSea);
   setToggle('btn-handles', P.showNodes); setToggle('btn-drift', P.drift);
-  setToggle('btn-svgbg', P.svgBg);
+  setToggle('btn-svgbg', P.svgBg); setToggle('btn-seafill', P.seaFill);
+  setToggle('btn-mesh', P.meshMode); setToggle('btn-meshsquare', P.meshSquare);
+  setToggle('btn-strata', P.strata); setToggle('btn-strataside', P.strataSide);
+  setToggle('btn-rivers', P.rivers); setToggle('btn-paths', P.paths);
   syncModeUI();
   syncNodeUI();
 }
@@ -1384,7 +2214,7 @@ function bindToggle(id, key, dirty) {
 
 var MODE_HINTS = [
   'iso-lines through the height field. every closed loop is a real level set, so the map reads as a survey sheet — index contours thicken every nth line, and the coastline is just the sea-level contour drawn heavy.',
-  'the field sliced into parallel sections and stacked back to front. hidden-line removal hides whatever a nearer ridge covers, which is what turns a pile of wiggles into a landform.',
+  'the field sliced into parallel sections and stacked back to front. hidden-line removal hides whatever a nearer ridge covers, which is what turns a pile of wiggles into a landform. add the cross wires for a mesh, or cut the front away for a strata block.',
   'streamlines released across the plate and carried downhill. on eroded ground they collect into the drainage network the droplets cut.',
   'short strokes pointing downhill, weighted by steepness. the flats stay bare, so the shape is carried entirely by stroke density.'
 ];
@@ -1402,6 +2232,10 @@ function syncModeUI() {
   }
   document.getElementById('mode-tag').textContent = ['contour', 'profile', 'flow', 'hachure'][P.mode];
   document.getElementById('mode-hint').innerHTML = MODE_HINTS[P.mode];
+  /* the overlays are map-space work, so they are dimmed out over a profile */
+  var ov = document.getElementById('block-overlay');
+  ov.style.opacity = P.mode === 1 ? '0.4' : '';
+  document.getElementById('overlay-tag').textContent = P.mode === 1 ? 'plan views only' : '';
 }
 
 function syncNodeUI() {
@@ -1475,6 +2309,13 @@ function buildPanel() {
 
   bindToggle('btn-bathy', 'bathy', 'lines');
   bindToggle('btn-coast', 'coast', 'lines');
+  bindToggle('btn-seafill', 'seaFill', 'lines');
+  bindToggle('btn-mesh', 'meshMode', 'lines');
+  bindToggle('btn-meshsquare', 'meshSquare', 'lines');
+  bindToggle('btn-strata', 'strata', 'lines');
+  bindToggle('btn-strataside', 'strataSide', 'lines');
+  bindToggle('btn-rivers', 'rivers', 'lines');
+  bindToggle('btn-paths', 'paths', 'lines');
   bindToggle('btn-smoothlines', 'smoothLines', 'lines');
   bindToggle('btn-flowsea', 'flowSea', 'lines');
   bindToggle('btn-handles', 'showNodes', 'draw');
@@ -1574,7 +2415,24 @@ var PRESETS = [
       flowAngle: 88, taper: 0.1, palette: 5, colormode: 1, weight: 0.55, weightVar: 0.3, wobble: 0.4 } },
   { name: 'abyssal', p: { mode: 0, fractal: 0, scale: 5.5, octaves: 7, gain: 0.58, warp: 0.9,
       island: 0.0, erosion: 0.1, sea: 0.6, levels: 14, indexEvery: 4, bathy: true, bathyLevels: 26,
-      coastWeight: 1.5, palette: 3, colormode: 1, weight: 0.5, weightVar: 0.2, wobble: 0.8 } }
+      coastWeight: 1.5, palette: 3, colormode: 1, weight: 0.5, weightVar: 0.2, wobble: 0.8 } },
+  { name: 'wire mesh', p: { mode: 1, fractal: 0, scale: 2.8, octaves: 5, gain: 0.5, warp: 0.35,
+      island: 0.34, erosion: 0.3, sea: 0.12, rows: 44, relief: 0.5, spread: 0.78, skew: 0.32,
+      detail: 1.4, occlusion: 1, meshMode: true, meshSquare: true, plateW: 0.84, stackConv: 0.32,
+      stackPersp: 0.6, stackTurn: 0, stackZoom: 0.9, stackY: 0.05, palette: 6, colormode: 0,
+      weight: 0.65, weightVar: 0.2, wobble: 0.2, wobbleDrift: 0.5 } },
+  { name: 'strata block', p: { mode: 1, fractal: 1, scale: 2.4, octaves: 6, gain: 0.5, warp: 0.3,
+      island: 0.25, erosion: 0.45, sea: 0.05, rows: 40, relief: 0.5, spread: 0.46, skew: 0.26,
+      detail: 1, occlusion: 1, meshMode: true, meshSquare: true, plateW: 0.66, stackConv: 0.26,
+      stackPersp: 0.5, stackZoom: 0.5, stackY: 0.06, strata: true, strataSide: true,
+      strataCount: 7, strataDepth: 0.16, strataDamp: 0.6, strataWave: 0.45, strataHatch: 7,
+      palette: 7, colormode: 1, weight: 0.8, weightVar: 0.3, wobble: 0.3, wobbleDrift: 0.5 } },
+  { name: 'trail sheet', p: { mode: 0, fractal: 0, scale: 2.6, octaves: 6, gain: 0.5, warp: 0.45,
+      island: 0.4, erosion: 0.6, smooth: 1, sea: 0.24, levels: 34, indexEvery: 5, indexWeight: 2.2,
+      bathy: false, coast: true, coastWeight: 2.6, seaFill: true, seaFillAlpha: 1, rivers: true,
+      riverThresh: 0.62, riverWeight: 1.7, paths: true, pathCount: 2, pathGrade: 0.6, pathDash: 5,
+      pathWeight: 1.7, palette: 8, colormode: 0, weight: 0.6, weightVar: 0.3, wobble: 0.6,
+      wobbleDrift: 0.6 } }
 ];
 
 function buildPresets() {
@@ -1594,8 +2452,13 @@ function buildPresets() {
   });
 }
 
+/* the switches a preset does not mention go back to off, so a mesh or a set of
+   rivers does not follow you into the next sheet */
+var PRESET_OFF = { meshMode: false, strata: false, seaFill: false, rivers: false, paths: false };
+
 function applyPreset(src) {
-  for (var k in src) if (P[k] !== undefined) P[k] = src[k];
+  for (var k in PRESET_OFF) if (!(k in src)) P[k] = PRESET_OFF[k];
+  for (k in src) if (P[k] !== undefined) P[k] = src[k];
   noise = makeNoise(P.seed);
   document.body.classList.toggle('lightfield', !!pal().light);
   selected = -1;
@@ -1735,6 +2598,8 @@ window.addEventListener('keydown', function (e) {
   else if (k === 'c') { nodes = []; selected = -1; syncNodeUI(); invalidate('field'); }
   else if (k === 'd') { P.drift = !P.drift; setToggle('btn-drift', P.drift); if (!P.drift) { draftMode = false; invalidate('field'); } }
   else if (k >= '1' && k <= '4') { P.mode = +k - 1; syncModeUI(); invalidate('lines'); }
+  else if (k === 'm') { P.meshMode = !P.meshMode; setToggle('btn-mesh', P.meshMode); invalidate('lines'); }
+  else if (k === 's') { P.seaFill = !P.seaFill; setToggle('btn-seafill', P.seaFill); invalidate('lines'); }
   else if (k === 'escape') { selected = -1; syncNodeUI(); draw(); }
   else if (k === 'delete' || k === 'backspace') {
     if (selected >= 0) { nodes.splice(selected, 1); selected = -1; syncNodeUI(); invalidate('field'); }
@@ -1821,6 +2686,20 @@ function exportSVG() {
 
   for (var i = 0; i < lines.length; i++) {
     var L = lines[i], pts = L.pts, n = pts.length, k;
+
+    if (L.seaFill) {
+      var sd = 'M0 0H' + Math.round(W) + 'V' + Math.round(H) + 'H0Z';
+      for (var q = 0; q < L.polys.length; q++) {
+        var sp = L.polys[q];
+        sd += 'M' + sp[0].toFixed(2) + ' ' + sp[1].toFixed(2);
+        for (var m = 2; m < sp.length; m += 2) sd += 'L' + sp[m].toFixed(2) + ' ' + sp[m + 1].toFixed(2);
+        sd += 'Z';
+      }
+      out.push('<path d="' + sd + '" ' + svgPaint(L.c, 'fill') +
+               ' fill-rule="evenodd" stroke="none"/>');
+      continue;
+    }
+
     if (n < 4) continue;
     var d = 'M' + pts[0].toFixed(2) + ' ' + pts[1].toFixed(2);
     for (k = 2; k < n; k += 2) d += 'L' + pts[k].toFixed(2) + ' ' + pts[k + 1].toFixed(2);
@@ -1832,7 +2711,8 @@ function exportSVG() {
     }
     if (L.closed) d += 'Z';
     out.push('<path d="' + d + '" ' + svgPaint(L.c, 'stroke') +
-             ' stroke-width="' + L.w.toFixed(2) + '"/>');
+             ' stroke-width="' + L.w.toFixed(2) + '"' +
+             (L.dash ? ' stroke-dasharray="' + L.dash[0] + ',' + L.dash[1] + '"' : '') + '/>');
   }
   out.push('</g></svg>');
   download('relief_' + stamp() + '.svg', new Blob([out.join('\n')], { type: 'image/svg+xml' }));
