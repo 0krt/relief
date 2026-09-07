@@ -9,7 +9,8 @@ Single-file HTML, no build step, no dependencies. Open `index.html` in a browser
 ## Line modes
 
 - **contour** — marching-squares isolines, with index contours, bathymetry and a weighted coastline
-- **profile** — stacked ridgeline profiles with hidden-line occlusion, optional cross wires and a cut strata block
+- **profile** — stacked ridgeline profiles with hidden-line occlusion, optional cross wires and a
+  cut strata block, either flat on a shear or turned on a real camera
 - **flow** — streamlines following the downhill gradient; rotate the comb angle toward 90° to run them across the slope instead
 - **hachure** — Lehmann's rule: strokes point downhill and get heavier as the ground steepens
 
@@ -32,6 +33,58 @@ placed by one projection, so the whole thing stays welded together however it is
   Each bed carries the shape of the surface above it, flatter the deeper it lies, with a
   fold of its own; *flattening* slides between beds of constant thickness and beds that
   level off onto the floor. Shear the plate to swing a flank into view.
+- **hatching** rules the beds through. *hatch angle* leans the strokes off the vertical and
+  the style decides what they are — ruled, crossed, stippled, broken or herringbone — with
+  *hatch every* choosing which beds carry it.
+
+## The block as a solid
+
+**3d block** takes the plate off the shear and hangs it on a camera: a yaw, a tilt and a lens.
+**shift+drag** the sheet turns it, **shift+wheel** pulls the camera in, and the sliders do the
+same thing by hand. A shift+click that never moves still plants a basin, so the one gesture
+serves both.
+
+With a camera on it there is no fixed front, so nothing can be hidden by a horizon buffer any
+more. Instead the ground, the walls, the wires and the cover are cut into pieces, each carrying
+how far off it is, and the whole lot is painted back to front:
+
+- **opaque body** fills the ribbon between one row and the next with the page itself. That is
+  what stops the far flank, the beds of the back wall and the underside showing through the
+  ground standing in front of them. Turn it off and the block goes back to being a wireframe.
+- **opaque faces** does the same for the walls of the cut. *body tone* lifts both fills off the
+  page toward the dark end of the ramp, so at 0 the fill is pure occlusion and nothing but the
+  lines show.
+- **block plan** cuts the same stack to a disc instead of a rectangle. Every row becomes a
+  chord and the two flanks together walk the wall the whole way round — a core rather than a
+  block. On a camera the footprint is round; flat on the sheet it foreshortens into the ellipse
+  an oblique view should give.
+- the walls are cut into chunks across as well as along, the more the block has been swung
+  round, so a wall seen nearly edge-on still interleaves correctly with the ground over it.
+
+## Line work
+
+The same geometry, broken into marks along its own arc length: **dots**, **dashes**, **crosses**,
+or a **dither** that thins the marks out toward the light end of the ramp — the tone of a line
+becoming the density of its stipple. Every mark is still real geometry and still exports; a
+stippled contour costs one path, not four hundred.
+
+## Vegetation
+
+Symbols scattered where the ground, the slope and a moisture field all allow them: marsh on the
+wet flats, broadleaf up to the *tree line*, conifer under it, scrub on what is too steep for
+either, or one cover chosen by hand. *patchiness* clumps them into woods instead of spreading
+them evenly. It rides on the plate as well as the map, so the 3d block comes up wooded, with the
+ground in front painting over whatever stands behind it.
+
+## MIDI
+
+The cursor is the instrument. With a Web MIDI output picked, **height** plays the ground under
+the pointer on the channel you set, and **coast** plays how far that point lies from the water
+on the next channel up. The coast voice is rooted on a **C**: stand in the sea and it is a plain
+C, walk inland and it climbs the scale. That distance is a real distance transform of the
+coastline, not the height, so a low plain far from any shore still sings high. Both voices send
+a continuous controller alongside the note — mod wheel for height, expression for the coast —
+and everything is silenced the moment the pointer leaves the sheet.
 
 ## Rivers, paths and the sea
 
@@ -68,6 +121,11 @@ drag its ring to resize, wheel over it to change height, alt+click to delete.
 | `1`–`4` | line mode |
 | `M` | wire mesh |
 | `S` | fill sea |
+| `B` | 3d block |
+| `V` | vegetation |
+| `X` | cycle line work |
+| `shift+drag` | turn the 3d block |
+| `shift+wheel` | camera zoom |
 | `D` | drift |
 | `space` | re-render |
 | `del` | delete selected node |
@@ -79,3 +137,9 @@ The map is a set of polylines, not an image, so the SVG export is real geometry 
 by stroke weight, dashed where the paths are dashed, the sea a single even-odd path,
 ready to plot, cut or engrave. PNG export is also available. The JSON carries every
 parameter and node, so a map you like comes back exactly.
+
+Presets are the parameters without the sheet. **export preset** writes the current settings out
+under the name you give them and adds them to the list; **import preset** reads back one preset,
+an array of them, or a whole saved sheet, and they join the dropdown under *my presets* and stay
+there between visits. **export all** writes everything you have imported or saved as one file.
+Unknown keys are ignored on the way in, so a preset from an older sheet still loads.

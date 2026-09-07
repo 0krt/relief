@@ -127,7 +127,7 @@
   button.tool:hover { color: var(--ink); }
   button.tool.active { color: var(--accent); border-color: var(--accent-dim); }
 
-  select, input[type="number"] {
+  select, input[type="number"], input[type="text"] {
     width: 100%; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
     color: var(--ink); background: #0d0f13; border: 1px solid var(--line-strong);
     border-radius: 3px; padding: 6px 8px; cursor: pointer; margin-bottom: 10px;
@@ -144,6 +144,7 @@
 
   .seedrow { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; }
   .seedrow input[type="number"] { margin-bottom: 0; flex: 1; cursor: text; }
+  input[type="text"] { cursor: text; }
   .seedrow button { flex: 0 0 auto; min-width: 60px; }
 
   #nodehead {
@@ -289,7 +290,7 @@
   </div>
 
   <div class="section" id="block-ridge">
-    <h2>Profile</h2>
+    <h2>Profile <span class="tag" id="ridge-tag"></span></h2>
     <div id="params-ridge"></div>
     <div class="sublabel">occlusion</div>
     <select aria-label="Occlusion" id="occlusion">
@@ -298,10 +299,30 @@
       <option value="2">none — transparent</option>
     </select>
 
+    <div class="sublabel">solid body</div>
+    <div class="toolrow">
+      <button class="tool" id="btn-p3d">3d block</button>
+      <button class="tool active" id="btn-bodysolid">opaque body</button>
+      <button class="tool active" id="btn-facesolid">opaque faces</button>
+    </div>
+    <div class="sublabel">block plan</div>
+    <select aria-label="Block plan" id="blockshape">
+      <option value="0" selected>rectangular</option>
+      <option value="1">circular — core</option>
+    </select>
+    <div id="params-cam"></div>
+    <div class="hint">
+      <b>3d block</b> hangs the plate on a real camera instead of a shear, so the whole thing is one
+      solid object: <b>shift+drag</b> the sheet to orbit it, <b>shift+wheel</b> to pull in. the body is
+      painted back to front, so with <b>opaque body</b> on, the far flank, the beds of the back wall
+      and the underside are hidden by the ground standing in front of them.
+    </div>
+
     <div class="sublabel">wire mesh</div>
     <div class="toolrow">
       <button class="tool" id="btn-mesh">cross wires</button>
       <button class="tool active" id="btn-meshsquare">square cells</button>
+      <button class="tool" id="btn-meshtri">triangles</button>
     </div>
     <div id="params-mesh"></div>
     <div class="hint">
@@ -322,6 +343,14 @@
       <button class="tool" id="btn-strata">cut block</button>
       <button class="tool active" id="btn-strataside">flanks</button>
     </div>
+    <div class="sublabel">hatching</div>
+    <select aria-label="Hatch style" id="hatchstyle">
+      <option value="0" selected>ruled</option>
+      <option value="1">cross</option>
+      <option value="2">stipple</option>
+      <option value="3">broken</option>
+      <option value="4">herringbone</option>
+    </select>
     <div id="params-strata"></div>
     <div class="hint">
       the ground under the front of the plate, drawn as beds. <b>flattening</b> takes the deep
@@ -367,6 +396,71 @@
   </div>
 
   <div class="section">
+    <h2>Line work <span class="tag" id="lw-tag"></span></h2>
+    <select aria-label="Line work" id="linework">
+      <option value="0" selected>continuous</option>
+      <option value="1">dots</option>
+      <option value="2">dashes</option>
+      <option value="3">dither</option>
+      <option value="4">crosses</option>
+    </select>
+    <div id="params-linework"></div>
+    <div class="hint">
+      the same geometry broken into marks along its own arc length, so a contour keeps its path and
+      loses its continuity. <b>dither</b> thins the marks out toward the light end of the ramp, which
+      turns the tone of a line into the density of its dots. every mark is still real geometry and
+      still exports.
+    </div>
+  </div>
+
+  <div class="section" id="block-veg">
+    <h2>Vegetation <span class="tag" id="veg-tag"></span></h2>
+    <div class="toolrow">
+      <button class="tool" id="btn-veg">vegetation</button>
+    </div>
+    <div class="sublabel">cover</div>
+    <select aria-label="Vegetation cover" id="vegmix">
+      <option value="0" selected>mixed — by band</option>
+      <option value="1">conifer</option>
+      <option value="2">broadleaf</option>
+      <option value="3">scrub</option>
+      <option value="4">marsh</option>
+      <option value="5">grass</option>
+    </select>
+    <div id="params-veg"></div>
+    <div class="hint">
+      symbols scattered where ground, slope and a moisture field allow them: marsh on the wet flats,
+      broadleaf up to the <b>tree line</b>, conifer under it, scrub on what is too steep for either.
+      it rides on the plate as well as the map, so the 3d block comes up wooded.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>MIDI <span class="tag" id="midi-tag"></span></h2>
+    <div class="toolrow">
+      <button class="tool" id="btn-midi">midi out</button>
+      <button class="tool active" id="btn-midiheight">height</button>
+      <button class="tool active" id="btn-midicoast">coast</button>
+    </div>
+    <div class="sublabel">port</div>
+    <select aria-label="MIDI output port" id="midiport"></select>
+    <div class="sublabel">scale</div>
+    <select aria-label="MIDI scale" id="midiscale">
+      <option value="0">chromatic</option>
+      <option value="1" selected>major</option>
+      <option value="2">minor</option>
+      <option value="3">pentatonic</option>
+      <option value="4">whole tone</option>
+    </select>
+    <div id="params-midi"></div>
+    <div class="hint">
+      the cursor is the instrument. <b>height</b> plays the ground under it on the channel you set;
+      <b>coast</b> plays how far that point lies from the water on the next channel up, rooted on a
+      <b>C</b> — stand in the sea and it is a plain C, walk inland and it climbs the scale.
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Survey</h2>
     <div class="toolrow">
       <button class="tool" id="btn-drift">drift</button>
@@ -389,6 +483,21 @@
       <button class="act" id="btn-save">save json</button>
       <button class="act" id="btn-load">load json</button>
     </div>
+    <div class="sublabel">preset name</div>
+    <input type="text" id="presetname" aria-label="Preset name" placeholder="untitled" autocomplete="off">
+    <div class="btnrow">
+      <button class="act" id="btn-presetsave">export preset</button>
+      <button class="act" id="btn-presetload">import preset</button>
+    </div>
+    <div class="btnrow">
+      <button class="act" id="btn-presetall">export all</button>
+      <button class="act danger" id="btn-presetclear">forget mine</button>
+    </div>
+    <div class="hint" style="margin-top:8px">
+      a preset is the parameters without the sheet: import one and it joins the list under
+      <b>my presets</b> and stays there. <b>export all</b> writes every preset you have imported or
+      saved as a single file.
+    </div>
     <div class="toolrow" style="margin-top:10px">
       <button class="tool active" id="btn-svgbg">svg background</button>
     </div>
@@ -404,13 +513,15 @@
     <div class="hint">
       <kbd>R</kbd> roll seed &nbsp; <kbd>H</kbd> handles &nbsp; <kbd>C</kbd> clear nodes<br>
       <kbd>1</kbd>–<kbd>4</kbd> line mode &nbsp; <kbd>D</kbd> drift &nbsp; <kbd>M</kbd> wire mesh<br>
-      <kbd>S</kbd> fill sea &nbsp; <kbd>space</kbd> re-render<br>
+      <kbd>S</kbd> fill sea &nbsp; <kbd>B</kbd> 3d block &nbsp; <kbd>V</kbd> vegetation<br>
+      <kbd>X</kbd> line work &nbsp; <kbd>shift+drag</kbd> orbit the block &nbsp; <kbd>space</kbd> re-render<br>
       <kbd>del</kbd> delete selected node &nbsp; <kbd>esc</kbd> deselect
     </div>
   </div>
 </div>
 
 <input type="file" id="fileinput" accept="application/json,.json" class="sr-only" aria-hidden="true" tabindex="-1">
+<input type="file" id="presetinput" accept="application/json,.json" class="sr-only" aria-hidden="true" tabindex="-1">
 <div id="err" role="alert"></div>
 
 <script>
@@ -507,6 +618,19 @@ var P = {
   plateW: 1, stackConv: 0, stackPersp: 0, stackTurn: 0, stackZoom: 1, stackY: 0,
   strata: false, strataSide: true, strataCount: 8, strataDepth: 0.24,
   strataDamp: 0.55, strataWave: 0.35, strataHatch: 0,
+  strataHatchStyle: 0, strataHatchAngle: 0, strataHatchEvery: 2, strataHatchWeight: 0.55,
+
+  p3d: false, blockShape: 0, meshTri: false,
+  camYaw: 32, camPitch: 26, camPersp: 0.35, camZoom: 1,
+  bodySolid: true, faceSolid: true, bodyShade: 0.12,
+
+  linework: 0, lwSpacing: 3.4, lwLen: 0.55, lwJitter: 0.35, lwWeight: 1,
+
+  veg: false, vegMix: 0, vegDensity: 0.5, vegSize: 1.2, vegLine: 0.72,
+  vegLow: 0.02, vegSlope: 0.5, vegPatch: 0.6,
+
+  midiOn: false, midiHeight: true, midiCoast: true, midiChan: 1, midiScale: 1,
+  midiLow: 48, midiHigh: 84, midiRange: 0.3, midiVel: 90,
 
   seeds: 1400, flowStep: 1.2, flowLen: 150, flowAngle: 0, flowMin: 16,
   taper: 0.6, flowSea: true,
@@ -574,6 +698,37 @@ var SPECS = [
   { id: 'strataDamp',  grp: 'strata', label: 'flattening',  min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
   { id: 'strataWave',  grp: 'strata', label: 'folding',     min: 0, max: 1.5, step: 0.01, d: 2, dirty: 'lines' },
   { id: 'strataHatch', grp: 'strata', label: 'hatch',       min: 0, max: 14, step: 0.5, d: 1, dirty: 'lines' },
+  { id: 'strataHatchAngle',  grp: 'strata', label: 'hatch angle',  min: -70, max: 70, step: 1, d: 0, dirty: 'lines' },
+  { id: 'strataHatchEvery',  grp: 'strata', label: 'hatch every',  min: 1, max: 6, step: 1, d: 0, dirty: 'lines' },
+  { id: 'strataHatchWeight', grp: 'strata', label: 'hatch weight', min: 0.15, max: 2, step: 0.05, d: 2, dirty: 'lines' },
+
+  /* --- the camera the 3d block hangs on ---------------------------------- */
+  { id: 'camYaw',   grp: 'cam', label: 'orbit',       min: -180, max: 180, step: 1, d: 0, dirty: 'lines' },
+  { id: 'camPitch', grp: 'cam', label: 'tilt',        min: -85, max: 85, step: 1, d: 0, dirty: 'lines' },
+  { id: 'camPersp', grp: 'cam', label: 'perspective', min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'camZoom',  grp: 'cam', label: 'camera zoom', min: 0.3, max: 2.5, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'bodyShade', grp: 'cam', label: 'body tone',  min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+
+  /* --- line work --------------------------------------------------------- */
+  { id: 'lwSpacing', grp: 'linework', label: 'mark spacing', min: 1, max: 16, step: 0.1, d: 1, dirty: 'lines' },
+  { id: 'lwLen',     grp: 'linework', label: 'mark length',  min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'lwJitter',  grp: 'linework', label: 'mark jitter',  min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'lwWeight',  grp: 'linework', label: 'mark weight',  min: 0.3, max: 4, step: 0.05, d: 2, dirty: 'lines' },
+
+  /* --- vegetation -------------------------------------------------------- */
+  { id: 'vegDensity', grp: 'veg', label: 'density',     min: 0.02, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'vegSize',    grp: 'veg', label: 'symbol size', min: 0.3, max: 3, step: 0.05, d: 2, dirty: 'lines' },
+  { id: 'vegLine',    grp: 'veg', label: 'tree line',   min: 0.1, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'vegLow',     grp: 'veg', label: 'lower limit', min: 0, max: 0.5, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'vegSlope',   grp: 'veg', label: 'slope limit', min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'vegPatch',   grp: 'veg', label: 'patchiness',  min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+
+  /* --- midi -------------------------------------------------------------- */
+  { id: 'midiChan',  grp: 'midi', label: 'channel',     min: 1, max: 15, step: 1, d: 0, dirty: 'none' },
+  { id: 'midiLow',   grp: 'midi', label: 'low note',    min: 24, max: 84, step: 1, d: 0, dirty: 'none' },
+  { id: 'midiHigh',  grp: 'midi', label: 'high note',   min: 36, max: 108, step: 1, d: 0, dirty: 'none' },
+  { id: 'midiRange', grp: 'midi', label: 'coast reach', min: 0.05, max: 1, step: 0.01, d: 2, dirty: 'none' },
+  { id: 'midiVel',   grp: 'midi', label: 'velocity',    min: 1, max: 127, step: 1, d: 0, dirty: 'none' },
 
   /* --- flow ---------------------------------------------------------- */
   { id: 'seeds',     grp: 'flow', label: 'seeds',      min: 100, max: 8000, step: 50, d: 0, dirty: 'lines' },
@@ -1107,18 +1262,35 @@ function pushIso(out, level, w, colour) {
    with the shape sliders at their defaults it is the plain stack of parallel
    sections it always was.
    ================================================================== */
-var PJ = { top: 0, depth: 0, relief: 0, plate: 0, cx: 0, shear: 0, ca: 1, sa: 0, zoom: 1 };
+var PJ = { top: 0, depth: 0, relief: 0, plate: 0, cx: 0, midY: 0, shear: 0,
+           ca: 1, sa: 0, zoom: 1, zdep: 0 };
+/* the camera the 3d block hangs on.  in 2d the plate is a shear and nothing
+   more; in 3d it is a real solid turned in front of a lens, and every point
+   still goes through the same two functions. */
+var C3 = { cy: 1, sy: 0, cp: 1, sp: 0, dist: 1e6, zoom: 1 };
 
 function plateSetup() {
   PJ.depth  = H * 0.82 * P.spread;
   PJ.top    = H * 0.10 + (H * 0.82 - PJ.depth) * 0.5 + P.stackY * H * 0.22;
   PJ.relief = H * 0.5 * P.relief;
-  PJ.plate  = W * P.plateW;
+  /* a rectangular plate is as wide as the sheet lets it be.  a core on a real
+     camera is round, so there its width follows its depth and the width slider
+     only ovals it; a flat plate is an oblique view and keeps the sheet's own
+     width, which is what foreshortens the disc into the ellipse it should be */
+  PJ.plate  = (P.p3d && (P.blockShape | 0) === 1) ? PJ.depth * P.plateW : W * P.plateW;
   PJ.cx     = W * 0.5;
+  PJ.midY   = H * 0.52 + P.stackY * H * 0.22;
   PJ.shear  = P.skew * H * 0.45;
   var th = P.stackTurn * Math.PI / 180;
   PJ.ca = Math.cos(th); PJ.sa = Math.sin(th);
   PJ.zoom = P.stackZoom;
+
+  var ya = P.camYaw * Math.PI / 180, pa = P.camPitch * Math.PI / 180;
+  C3.cy = Math.cos(ya); C3.sy = Math.sin(ya);
+  C3.cp = Math.cos(pa); C3.sp = Math.sin(pa);
+  /* perspective at 0 is a lens so long the block is effectively orthographic */
+  C3.dist = Math.max(PJ.depth, 1) * lerp(90, 1.7, clamp(P.camPersp, 0, 1));
+  C3.zoom = P.camZoom;
 }
 
 /* how the rows are spaced in depth.  0 keeps them even; positive crowds them
@@ -1134,7 +1306,7 @@ function plateEase(v) {
 /* (u, v) walks the unit square of the plate.  it is turned and zoomed in map
    space, so the sections can be cut across the ground at any angle instead of
    always due east. */
-var pmOut = [0, 0], ppOut = [0, 0];
+var pmOut = [0, 0], ppOut = [0, 0], spanOut = [0, 1];
 function plateMap(u, v) {
   var lx = (u - 0.5) * aspect * PJ.zoom, ly = (v - 0.5) * PJ.zoom;
   pmOut[0] = aspect * 0.5 + lx * PJ.ca - ly * PJ.sa;
@@ -1145,17 +1317,70 @@ function plateHeight(u, v) {
   var m = plateMap(u, v);
   return sampleH(m[0], m[1]);
 }
-/* and the projection: shear leans the stack, convergence narrows the far rows
-   and foreshortens their relief with them */
+
+/* the plan of the block.  a rectangle spans the whole width at every row; a
+   circular core is the same stack cut to a disc, so each row is a chord and
+   the two flanks together walk the wall all the way round. */
+function plateSpan(v) {
+  if ((P.blockShape | 0) !== 1) { spanOut[0] = 0; spanOut[1] = 1; return spanOut; }
+  var t = 2 * v - 1, hw = Math.sqrt(Math.max(0, 1 - t * t)) * 0.5;
+  spanOut[0] = 0.5 - hw; spanOut[1] = 0.5 + hw;
+  return spanOut;
+}
+
+/* the projection.  in 2d, shear leans the stack, convergence narrows the far
+   rows and foreshortens their relief with them.  in 3d the same (u, v, height)
+   goes through a yaw, a tilt and a lens, and PJ.zdep comes back with it so the
+   caller can sort what it just placed. */
+function plate3(u, v, yUp) {
+  var e = plateEase(v);
+  var x = (u - 0.5) * PJ.plate;
+  var z = (e - 0.5) * PJ.depth;
+  var x1 =  x * C3.cy + z * C3.sy;
+  var z1 = -x * C3.sy + z * C3.cy;
+  var y2 = yUp * C3.cp - z1 * C3.sp;
+  var z2 = yUp * C3.sp + z1 * C3.cp;
+  var dep = C3.dist - z2;
+  if (dep < 1) dep = 1;
+  var sc = C3.dist / dep * C3.zoom;
+  ppOut[0] = PJ.cx + x1 * sc;
+  ppOut[1] = PJ.midY - y2 * sc;
+  PJ.zdep = dep;
+  return ppOut;
+}
 function plateProject(u, v, h) {
+  if (P.p3d) return plate3(u, v, (Math.max(h, P.sea) - P.sea) * PJ.relief);
   var e = plateEase(v);
   var sc = lerp(1 - P.stackConv, 1, e);
   ppOut[0] = PJ.cx + (u - 0.5) * PJ.plate * sc + (v - 0.5) * PJ.shear;
   ppOut[1] = PJ.top + e * PJ.depth - (Math.max(h, P.sea) - P.sea) * PJ.relief * sc;
+  PJ.zdep = -e * 1000;
+  return ppOut;
+}
+/* a point dy below the plate's base plane at (u, v) - the floor of the cut and
+   everything between it and the ground */
+function plateProjectD(u, v, dy) {
+  if (P.p3d) return plate3(u, v, -dy);
+  var e = plateEase(v);
+  var sc = lerp(1 - P.stackConv, 1, e);
+  ppOut[0] = PJ.cx + (u - 0.5) * PJ.plate * sc + (v - 0.5) * PJ.shear;
+  ppOut[1] = PJ.top + e * PJ.depth + dy;
+  PJ.zdep = -e * 1000;
   return ppOut;
 }
 function plateBase(v) { return PJ.top + plateEase(v) * PJ.depth; }
 function plateFloor(v) { return plateBase(v) + P.strataDepth * H; }
+
+/* the colour the body of the block is painted with.  at tone 0 it is the page
+   itself, so the fill is pure occlusion and nothing but the lines show. */
+function bodyFill(mul) {
+  var p = pal();
+  var a = hex2rgb(p.bg), b = hex2rgb(p.stops[0]);
+  var m = clamp(P.bodyShade * (mul === undefined ? 1 : mul), 0, 1);
+  return 'rgb(' + Math.round(lerp(a[0], b[0], m)) + ',' +
+                  Math.round(lerp(a[1], b[1], m)) + ',' +
+                  Math.round(lerp(a[2], b[2], m)) + ')';
+}
 
 /* square cells: the rungs are spaced to match what the rows measure on screen,
    so the mesh comes out as squares rather than ribbons */
@@ -1169,9 +1394,14 @@ function meshColumns(rows) {
    5b.  profile stack.  rows are drawn front to back and a horizon buffer
    keeps whatever a nearer ridge already covered from being drawn again - the
    hidden-line removal that makes a stack of sections read as a solid landform.
+   with the block turned into a 3d object the horizon buffer is no use - what
+   is in front depends on where the camera stands - so that path paints the
+   whole thing back to front instead, in 5e.
    ================================================================== */
 function genProfiles() {
   plateSetup();
+  if (P.p3d) return genPlateSolid();
+
   var out = [];
   var rows = P.rows | 0;
   var step = Math.max(0.5, P.detail);
@@ -1183,13 +1413,22 @@ function genProfiles() {
   for (i = 0; i < horizon.length; i++) horizon[i] = 1e9;
 
   var mcols = meshColumns(rows);
+  var circ = (P.blockShape | 0) === 1;
+  var vegOut = [];
+
+  function seen(x, y) {
+    var b = clamp(Math.round(x), 0, horizon.length - 1);
+    return y < horizon[b] - 0.05;
+  }
 
   for (r = rows - 1; r >= 0; r--) {
     var v = rows === 1 ? 0.5 : r / (rows - 1);
+    if (circ) v = lerp(0.015, 0.985, v);
+    var sp = plateSpan(v), u0 = sp[0], u1 = sp[1];
     var run = null, runs = [];
 
     for (i = 0; i <= cols; i++) {
-      var u = i / cols;
+      var u = lerp(u0, u1, i / cols);
       var h = plateHeight(u, v);
       var pp = plateProject(u, v, h);
       var x = pp[0], y = pp[1];
@@ -1219,18 +1458,24 @@ function genProfiles() {
       if (rr.pts.length < 4) continue;
       var t = clamp((rr.hSum / rr.n - P.sea) / span, 0, 1);
       out.push({
-        pts: rr.pts, w: styleWeight(t), c: styleColor(t), closed: false,
+        pts: rr.pts, w: styleWeight(t), c: styleColor(t), closed: false, t: t,
         fill: occl === 0 ? pal().bg : null,
         fillBase: plateBase(v) + H
       });
     }
 
     if (P.meshMode && r > 0) genRungs(out, r, rows, mcols, horizon, occl, span);
+    if (P.veg && r > 0) {
+      var vb = rows === 1 ? 0.5 : (r - 1) / (rows - 1);
+      if (circ) vb = lerp(0.015, 0.985, vb);
+      plateVeg(vegOut, r, vb, v, occl === 2 ? null : seen);
+    }
   }
 
   /* solid mode paints, so it has to go back to front - the reverse of the
      order the horizon buffer wants */
   if (occl === 0) out.reverse();
+  for (i = 0; i < vegOut.length; i++) out.push(vegOut[i]);
   if (P.strata) genStrata(out, cols);
   return out;
 }
@@ -1241,16 +1486,20 @@ function genProfiles() {
    where the row loop is when it calls this. */
 function genRungs(out, r, rows, mcols, horizon, occl, span) {
   var v0 = r / (rows - 1), v1 = (r - 1) / (rows - 1);
+  var circ = (P.blockShape | 0) === 1;
+  if (circ) { v0 = lerp(0.015, 0.985, v0); v1 = lerp(0.015, 0.985, v1); }
   var sub = 6;
   var xs = [], ys = [], hs = [], vis = [];
   var c, s, u, v, h, pp;
 
   for (c = 0; c <= mcols; c++) {
-    u = c / mcols;
+    var q = c / mcols;
     xs.length = 0; ys.length = 0; hs.length = 0; vis.length = 0;
 
     for (s = 0; s <= sub; s++) {
       v = lerp(v0, v1, s / sub);
+      var sp = plateSpan(v);
+      u = lerp(sp[0], sp[1], q);
       h = plateHeight(u, v);
       pp = plateProject(u, v, h);
       var x = pp[0], y = pp[1];
@@ -1275,9 +1524,34 @@ function genRungs(out, r, rows, mcols, horizon, occl, span) {
       if (run && (!vis[s] || s === sub)) {
         if (run.length >= 4) {
           var t = clamp((hSum / n - P.sea) / span, 0, 1);
-          out.push({ pts: run, w: styleWeight(t) * 0.92, c: styleColor(t), closed: false, fill: null });
+          out.push({ pts: run, w: styleWeight(t) * 0.92, c: styleColor(t), closed: false, t: t });
         }
         run = null; hSum = 0; n = 0;
+      }
+    }
+  }
+
+  /* the diagonal that turns every square cell into a pair of triangles */
+  if (P.meshTri) {
+    for (c = 0; c < mcols; c++) {
+      var pts = [], okAll = true, hS = 0;
+      for (s = 0; s <= sub; s++) {
+        var f = s / sub;
+        v = lerp(v0, v1, f);
+        var sp2 = plateSpan(v);
+        u = lerp(sp2[0], sp2[1], (c + f) / mcols);
+        h = plateHeight(u, v);
+        pp = plateProject(u, v, h);
+        if (pp[0] < -50 || pp[0] > W + 50) { okAll = false; break; }
+        if (occl === 1 && s > 0) {
+          var bb = clamp(Math.round(pp[0]), 0, horizon.length - 1);
+          if (pp[1] >= horizon[bb] - 0.05) { okAll = false; break; }
+        }
+        pts.push(pp[0], pp[1]); hS += h;
+      }
+      if (okAll && pts.length >= 4) {
+        var tt = clamp((hS / (sub + 1) - P.sea) / span, 0, 1);
+        out.push({ pts: pts, w: styleWeight(tt) * 0.7, c: styleColor(tt), closed: false, t: tt });
       }
     }
   }
@@ -1288,95 +1562,572 @@ function genRungs(out, r, rows, mcols, horizon, occl, span) {
    drawn as a stack of beds.  each bed carries the shape of the surface above
    it, flatter the deeper it lies, with a slow fold of its own on top - which
    is what a section looks like once the layers have been squeezed.
+
+   a face is built once, whole, so its beds run unbroken, and only then cut
+   into chunks - each chunk carrying the depth it sits at.  that is what lets
+   the same beds be painted in among the ground in front of them when the
+   block is turned in 3d.
    ================================================================== */
-function genStrata(out, cols) {
-  var K = Math.max(1, P.strataCount | 0);
+function bedThickness(K) {
   /* beds are not all the same thickness, so the cut reads as rock rather than
      as ruled paper */
   var fs = [0], acc = 0, k;
   for (k = 0; k < K; k++) { acc += 0.55 + hash1(k * 7.31 + 3.1) * 0.9; fs.push(acc); }
   for (k = 0; k <= K; k++) fs[k] /= acc;
-
-  genFace(out, K, fs, cols, -1);
-
-  if (P.strataSide) {
-    /* whichever flank the shear has swung into view - and both of them once
-       the plate converges */
-    var both = P.stackConv > 0.04;
-    if (P.skew >= 0.02 || both) genFace(out, K, fs, cols, 1);
-    if (P.skew <= -0.02 || both) genFace(out, K, fs, cols, 0);
-  }
+  return fs;
 }
 
-/* side < 0 cuts the front of the block; otherwise it cuts the flank at u=side */
-function genFace(out, K, fs, cols, side) {
-  var n = clamp(Math.round(cols * 0.6), 32, 420);
-  var fx = new Float64Array(n + 1), fy = new Float64Array(n + 1), fb = new Float64Array(n + 1);
-  var prev = new Float64Array(n + 1), cur = new Float64Array(n + 1);
-  var i, k, sumT = 0, sumB = 0;
-
-  for (i = 0; i <= n; i++) {
-    var q = i / n;
-    var u = side < 0 ? q : side, v = side < 0 ? 1 : q;
+/* walk a face and record, for every sample, where the ground is, where the
+   floor of the cut is and how far off the camera both of them are */
+function faceSample(uvs) {
+  var n = uvs.length;
+  var G = { n: n, sx: new Float64Array(n), sy: new Float64Array(n),
+            bx: new Float64Array(n), by: new Float64Array(n), d: new Float64Array(n) };
+  for (var i = 0; i < n; i++) {
+    var u = uvs[i][0], v = uvs[i][1];
     var pp = plateProject(u, v, plateHeight(u, v));
-    fx[i] = pp[0]; fy[i] = pp[1]; fb[i] = plateFloor(v);
-    prev[i] = fy[i];
-    sumT += fy[i]; sumB += fb[i];
+    G.sx[i] = pp[0]; G.sy[i] = pp[1];
+    var d1 = PJ.zdep;
+    pp = plateProjectD(u, v, P.strataDepth * H);
+    G.bx[i] = pp[0]; G.by[i] = pp[1];
+    G.d[i] = (d1 + PJ.zdep) * 0.5;
   }
-  var drop = Math.max(1, (sumB - sumT) / (n + 1));
+  return G;
+}
 
-  /* the flank's top edge is a cut, not a section, so nothing else draws it */
-  if (side >= 0) {
-    var edge = [];
-    for (i = 0; i <= n; i++) edge.push(fx[i], fy[i]);
-    out.push({ pts: edge, w: P.weight * 1.3, c: styleColor(0.85), closed: false, fill: null });
-  }
+/* the beds themselves, as one y per sample per bed.  bed 0 is the ground. */
+function faceBeds(G, K, fs) {
+  var n = G.n, i, k;
+  var sumT = 0, sumB = 0;
+  for (i = 0; i < n; i++) { sumT += G.sy[i]; sumB += G.by[i]; }
+  var drop = Math.max(1, (sumB - sumT) / n);
+  var beds = [];
+  var prev = new Float64Array(n);
+  for (i = 0; i < n; i++) prev[i] = G.sy[i];
+  beds.push(prev);
 
   for (k = 1; k <= K; k++) {
     var f = fs[k];
     /* a bed sits either parallel to the surface, keeping its thickness, or
        levels off toward the floor.  flattening slides between the two. */
     var mix = clamp(P.strataDamp * Math.pow(f, 0.6), 0, 1);
-    var pts = [];
-    for (i = 0; i <= n; i++) {
-      var par = fy[i] + f * drop;
-      var flat = lerp(fy[i], fb[i], f);
+    var cur = new Float64Array(n);
+    for (i = 0; i < n; i++) {
+      var par = G.sy[i] + f * drop;
+      var flat = lerp(G.sy[i], G.by[i], f);
       var y = lerp(par, flat, mix);
       if (k < K && P.strataWave > 0) {
         y += P.strataWave * drop * 0.09 * (1 - f * 0.5) *
-             noise(fx[i] * 0.006 + k * 11.7, k * 5.3 + 2.1);
+             noise(G.sx[i] * 0.006 + k * 11.7, k * 5.3 + 2.1);
       }
-      if (k === K) y = fb[i];
+      if (k === K) y = G.by[i];
       if (y < prev[i] + 0.4) y = prev[i] + 0.4;
-      if (y > fb[i]) y = fb[i];
+      if (y > G.by[i]) y = G.by[i];
       cur[i] = y;
-      pts.push(fx[i], y);
     }
+    beds.push(cur);
+    prev = cur;
+  }
+  return beds;
+}
 
-    var tc = clamp(0.86 - f * 0.74, 0, 1);
-    out.push({
-      pts: pts, w: P.weight * (k === K ? 1.9 : 1.05),
-      c: styleColor(tc), closed: false, fill: null
-    });
+/* a bed's y is worked out down the face; its x has to follow the face down
+   with it, which in 3d is not the x it started at */
+function bedPoint(G, y, fi, o) {
+  var i0 = Math.floor(fi), fr = fi - i0;
+  if (i0 < 0) { i0 = 0; fr = 0; }
+  if (i0 > G.n - 1) { i0 = G.n - 1; fr = 0; }
+  var i1 = Math.min(G.n - 1, i0 + 1);
+  var sy = lerp(G.sy[i0], G.sy[i1], fr), by = lerp(G.by[i0], G.by[i1], fr);
+  var dd = by - sy;
+  var t = Math.abs(dd) < 0.001 ? 0 : clamp((y - sy) / dd, 0, 1);
+  o[0] = lerp(lerp(G.sx[i0], G.sx[i1], fr), lerp(G.bx[i0], G.bx[i1], fr), t);
+  o[1] = y;
+  return o;
+}
 
-    /* every other bed is ruled through, the way a section is shaded */
-    if (P.strataHatch > 0.05 && (k % 2) === 1) {
-      var dx = Math.abs(fx[n] - fx[0]) / n;
-      var stride = Math.max(1, Math.round(P.strataHatch / Math.max(0.4, dx)));
-      for (i = 0; i <= n; i += stride) {
-        if (cur[i] - prev[i] < 1.6) continue;
-        out.push({
-          pts: [fx[i], prev[i] + 0.5, fx[i], cur[i] - 0.5],
-          w: P.weight * 0.55, c: styleColor(clamp(tc + 0.12, 0, 1)), closed: false, fill: null
-        });
-      }
-    }
-    for (i = 0; i <= n; i++) prev[i] = cur[i];
+/* the ruling between one bed and the next.  angle leans the strokes off the
+   vertical, and the style decides whether they are lines, crosses, dots or
+   dashes - the same band read four ways. */
+var hpOut = [0, 0];
+function hatchBand(items, G, yA, yB, i0, i1, tc) {
+  if (P.strataHatch <= 0.05) return;
+  var n = i1 - i0;
+  if (n < 2) return;
+  var dx = Math.abs(G.sx[i1] - G.sx[i0]) / n;
+  var stride = Math.max(1, Math.round(P.strataHatch / Math.max(0.4, dx)));
+  var style = P.strataHatchStyle | 0;
+  var ang = P.strataHatchAngle * Math.PI / 180;
+  var w = P.weight * P.strataHatchWeight;
+  var c = styleColor(clamp(tc + 0.12, 0, 1));
+  var i, j;
+
+  /* the band read at a fractional sample, so a leaning stroke stays inside it
+     where it thins instead of running out through a bed */
+  function at(arr, fi) {
+    var a0 = Math.floor(fi), fr = fi - a0;
+    if (a0 < i0) { a0 = i0; fr = 0; }
+    if (a0 > i1 - 1) { a0 = Math.max(i0, i1 - 1); fr = fi <= i1 ? fi - a0 : 1; }
+    return lerp(arr[a0], arr[a0 + 1], clamp(fr, 0, 1));
   }
 
-  /* the two vertical edges of the cut */
-  out.push({ pts: [fx[0], fy[0], fx[0], fb[0]], w: P.weight * 1.6, c: styleColor(0.6), closed: false, fill: null });
-  out.push({ pts: [fx[n], fy[n], fx[n], fb[n]], w: P.weight * 1.6, c: styleColor(0.6), closed: false, fill: null });
+  function stroke(i, a) {
+    var thick = yB[i] - yA[i];
+    if (thick < 1.6) return;
+    var slide = thick * Math.tan(a) / Math.max(0.05, dx);
+    var pts = [], steps = 3, ok = true;
+    for (j = 0; j <= steps; j++) {
+      var t = j / steps;
+      var fi = i + slide * t;
+      if (fi < i0 - 0.001 || fi > i1 + 0.001) { ok = false; break; }
+      var yy = lerp(at(yA, fi) + 0.5, at(yB, fi) - 0.5, t);
+      bedPoint(G, yy, fi, hpOut);
+      pts.push(hpOut[0], hpOut[1]);
+    }
+    if (!ok || pts.length < 4) return;
+    if (style === 3) {
+      /* broken: the same stroke, lifted in the middle */
+      items.push({ pts: [pts[0], pts[1], lerp(pts[0], pts[2], 0.42), lerp(pts[1], pts[3], 0.42)],
+                   w: w, c: c, closed: false, t: tc });
+      var m = pts.length;
+      items.push({ pts: [lerp(pts[m - 4], pts[m - 2], 0.58), lerp(pts[m - 3], pts[m - 1], 0.58),
+                         pts[m - 2], pts[m - 1]], w: w, c: c, closed: false, t: tc });
+      return;
+    }
+    items.push({ pts: pts, w: w, c: c, closed: false, t: tc });
+  }
+
+  for (i = i0; i <= i1; i += stride) {
+    if (style === 2) {
+      /* stipple: dots down the band instead of a rule through it */
+      var thick = yB[i] - yA[i];
+      if (thick < 2.5) continue;
+      var m = Math.max(1, Math.round(thick / Math.max(2.5, P.strataHatch * 0.8)));
+      var marks = [];
+      for (j = 1; j <= m; j++) {
+        var y = lerp(yA[i], yB[i], j / (m + 1));
+        bedPoint(G, y, i + (hash1(i * 3.7 + j * 1.9) - 0.5) * stride * 0.6, hpOut);
+        marks.push(hpOut[0], hpOut[1], hpOut[0] + 0.01, hpOut[1]);
+      }
+      if (marks.length) items.push({ marks: marks, w: w * 1.5, c: c, t: tc });
+      continue;
+    }
+    stroke(i, ang);
+    if (style === 1) stroke(i, -ang - 0.35);
+    if (style === 4 && ((i / stride) | 0) % 2 === 1) stroke(i, -ang);
+  }
+}
+
+/* cut a face into chunks and hand each one to the piece list at the depth it
+   stands at.  chunks are what let a turned block interleave its walls with
+   the ground in front of them. */
+function emitFace(pieces, G, K, fs, nchunk, opts) {
+  var beds = faceBeds(G, K, fs);
+  var n = G.n - 1, i, k, ci;
+  var faceC = P.faceSolid ? bodyFill(0.55) : null;
+  var pt = [0, 0];
+
+  for (ci = 0; ci < nchunk; ci++) {
+    var i0 = Math.round(n * ci / nchunk), i1 = Math.round(n * (ci + 1) / nchunk);
+    if (i1 <= i0) continue;
+    var items = [], d = 0;
+    for (i = i0; i <= i1; i++) d += G.d[i];
+    d /= (i1 - i0 + 1);
+
+    if (faceC) {
+      var poly = [];
+      for (i = i0; i <= i1; i++) poly.push(G.sx[i], G.sy[i]);
+      for (i = i1; i >= i0; i--) poly.push(G.bx[i], G.by[i]);
+      items.push({ pts: poly, closed: true, fillPoly: true, fill: faceC, w: 0 });
+    }
+
+    /* the flank's top edge is a cut, not a section, so nothing else draws it */
+    if (opts.topEdge) {
+      var edge = [];
+      for (i = i0; i <= i1; i++) edge.push(G.sx[i], G.sy[i]);
+      items.push({ pts: edge, w: P.weight * 1.3, c: styleColor(0.85), closed: false, t: 0.85 });
+    }
+
+    for (k = 1; k <= K; k++) {
+      var f = fs[k], cur = beds[k], prev = beds[k - 1];
+      var pts = [];
+      for (i = i0; i <= i1; i++) { bedPoint(G, cur[i], i, pt); pts.push(pt[0], pt[1]); }
+      var tc = clamp(0.86 - f * 0.74, 0, 1);
+      items.push({ pts: pts, w: P.weight * (k === K ? 1.9 : 1.05),
+                   c: styleColor(tc), closed: false, t: tc });
+      if (k % Math.max(1, P.strataHatchEvery | 0) === 1 % Math.max(1, P.strataHatchEvery | 0)) {
+        hatchBand(items, G, prev, cur, i0, i1, tc);
+      }
+    }
+
+    /* the two vertical edges of the cut */
+    if (opts.ends && ci === 0) {
+      items.push({ pts: [G.sx[0], G.sy[0], G.bx[0], G.by[0]],
+                   w: P.weight * 1.6, c: styleColor(0.6), closed: false, t: 0.6 });
+    }
+    if (opts.ends && ci === nchunk - 1) {
+      items.push({ pts: [G.sx[n], G.sy[n], G.bx[n], G.by[n]],
+                   w: P.weight * 1.6, c: styleColor(0.6), closed: false, t: 0.6 });
+    }
+
+    for (i = 0; i < items.length; i++) pieces.push({ d: d, o: i === 0 && faceC ? 0 : 1, it: items[i] });
+  }
+}
+
+/* the (u, v) walk of each wall.  a rectangle has four; a circular core has
+   one, the ring, which the two half-walls between them make up. */
+function faceUV(which, n) {
+  var uv = [], i, q, sp;
+  for (i = 0; i <= n; i++) {
+    q = i / n;
+    if (which === 'front') { sp = plateSpan(1 - 1e-4); uv.push([lerp(sp[0], sp[1], q), 1 - 1e-4]); }
+    else if (which === 'back') { sp = plateSpan(1e-4); uv.push([lerp(sp[0], sp[1], q), 1e-4]); }
+    else if (which === 'left') { sp = plateSpan(q); uv.push([sp[0], q]); }
+    else if (which === 'right') { sp = plateSpan(q); uv.push([sp[1], q]); }
+    else {
+      /* the ring, walked by angle so the samples stay even round the wall.
+         a flat plate only ever shows the near half of it. */
+      var th = which === 'ringfront' ? q * Math.PI : q * Math.PI * 2;
+      uv.push([0.5 + 0.5 * Math.cos(th), 0.5 + 0.5 * Math.sin(th)]);
+    }
+  }
+  return uv;
+}
+
+function genStrata(out, cols) {
+  var K = Math.max(1, P.strataCount | 0);
+  var fs = bedThickness(K);
+  var n = clamp(Math.round(cols * 0.6), 32, 420);
+  var pieces = [];
+  var circ = (P.blockShape | 0) === 1;
+
+  if (circ) {
+    emitFace(pieces, faceSample(faceUV('ringfront', Math.max(64, n))), K, fs,
+             Math.max(8, Math.min(48, P.rows | 0)), { topEdge: true, ends: true });
+  } else {
+    emitFace(pieces, faceSample(faceUV('front', n)), K, fs, 1, { topEdge: false, ends: true });
+    if (P.strataSide) {
+      /* whichever flank the shear has swung into view - and both of them once
+         the plate converges */
+      var both = P.stackConv > 0.04;
+      var m = clamp(Math.round(n * 0.5), 24, 200);
+      if (P.skew >= 0.02 || both) emitFace(pieces, faceSample(faceUV('right', m)), K, fs, 1, { topEdge: true, ends: true });
+      if (P.skew <= -0.02 || both) emitFace(pieces, faceSample(faceUV('left', m)), K, fs, 1, { topEdge: true, ends: true });
+    }
+  }
+  sortPieces(pieces);
+  for (var i = 0; i < pieces.length; i++) out.push(pieces[i].it);
+}
+
+/* far first, and inside one depth the fill before what stands on it */
+function sortPieces(pieces) {
+  for (var i = 0; i < pieces.length; i++) pieces[i].i = i;
+  pieces.sort(function (a, b) {
+    if (b.d !== a.d) return b.d - a.d;
+    if (a.o !== b.o) return a.o - b.o;
+    return a.i - b.i;
+  });
+  return pieces;
+}
+
+/* ==================================================================
+   5d.  vegetation.  symbols scattered where the ground, the slope and a
+   moisture field all allow them.  the same routine serves the map and the
+   plate - only where the symbol is placed differs.
+   ================================================================== */
+var VEG_NAMES = ['mixed', 'conifer', 'broadleaf', 'scrub', 'marsh', 'grass'];
+
+/* which symbol belongs at a place, when the cover is left on mixed */
+function vegKind(h, slope, wet) {
+  var mix = P.vegMix | 0;
+  if (mix > 0) return mix;
+  var span = Math.max(0.001, 1 - P.sea);
+  var t = (h - P.sea) / span;
+  if (t < 0.09 && wet > 0.45) return 4;
+  if (slope > 1.5) return 3;
+  if (t > 0.55) return 1;
+  return wet > 0.5 ? 2 : 1;
+}
+
+function vegSymbol(out, kind, x, y, s, c, w) {
+  var i, a;
+  if (kind === 1) {
+    out.push({ pts: [x, y, x, y - s * 1.9], w: w, c: c, closed: false, t: 0.5 });
+    out.push({ pts: [x - s * 0.62, y - s * 0.6, x, y - s * 1.9, x + s * 0.62, y - s * 0.6],
+               w: w, c: c, closed: false, t: 0.5 });
+  } else if (kind === 2) {
+    out.push({ pts: [x, y, x, y - s * 0.9], w: w, c: c, closed: false, t: 0.5 });
+    var ring = [];
+    for (i = 0; i < 9; i++) {
+      a = i / 9 * Math.PI * 2;
+      ring.push(x + Math.cos(a) * s * 0.78, y - s * 1.55 + Math.sin(a) * s * 0.62);
+    }
+    out.push({ pts: ring, w: w, c: c, closed: true, t: 0.5 });
+  } else if (kind === 3) {
+    out.push({ pts: [x - s * 0.7, y, x - s * 0.2, y - s * 0.85], w: w, c: c, closed: false, t: 0.5 });
+    out.push({ pts: [x + s * 0.7, y, x + s * 0.15, y - s * 0.95], w: w, c: c, closed: false, t: 0.5 });
+  } else if (kind === 4) {
+    for (i = 0; i < 3; i++) {
+      var yy = y - i * s * 0.55, hw = s * (0.8 - i * 0.18);
+      out.push({ pts: [x - hw, yy, x + hw, yy], w: w, c: c, closed: false, t: 0.5 });
+    }
+  } else {
+    for (i = -1; i <= 1; i++) {
+      out.push({ pts: [x, y, x + i * s * 0.7, y - s * (1.1 - Math.abs(i) * 0.3)],
+                 w: w, c: c, closed: false, t: 0.5 });
+    }
+  }
+}
+
+/* is there cover at this point of the map, and of what sort */
+function vegAt(mx, my, rnd) {
+  var h = sampleH(mx, my);
+  var span = Math.max(0.001, 1 - P.sea);
+  var lo = P.sea + P.vegLow * span, hi = P.sea + P.vegLine * span;
+  if (h < lo || h > hi) return -1;
+  var g = gradH(mx, my);
+  var sl = Math.sqrt(g[0] * g[0] + g[1] * g[1]);
+  if (sl > lerp(4.5, 0.2, P.vegSlope)) return -1;
+  var pn = noise(mx * 2.3 + 31.7, my * 2.3 - 11.3);
+  var keep = lerp(1, clamp(0.55 + pn * 1.1, 0, 1), P.vegPatch);
+  if (rnd() > keep) return -1;
+  var wet = clamp(0.5 + noise(mx * 1.4 - 7.2, my * 1.4 + 19.4) * 1.2, 0, 1);
+  return vegKind(h, sl, wet);
+}
+
+/* the cover is an overlay, so its tone keeps a floor under it - a wood on
+   low ground still has to be legible against the ground it stands on */
+function vegTone(h) {
+  var t = clamp((h - P.sea) / Math.max(0.001, 1 - P.sea), 0, 1);
+  return 0.42 + t * 0.58;
+}
+
+function genVeg(out) {
+  var rnd = mulberry32(P.seed * 977 + 13);
+  var n = Math.round(5200 * P.vegDensity * aspect);
+  var w = P.weight * 0.9, s0 = 3.4 * P.vegSize;
+  for (var i = 0; i < n; i++) {
+    var mx = rnd() * aspect, my = rnd();
+    var k = vegAt(mx, my, rnd);
+    if (k < 0) continue;
+    vegSymbol(out, k, mx * H, my * H, s0 * (0.8 + rnd() * 0.5),
+              styleColor(vegTone(sampleH(mx, my))), w);
+  }
+}
+
+/* the same cover, standing on the plate.  a symbol is planted in (u, v) and
+   projected like everything else, so it rides the block round as it turns. */
+function plateVeg(out, band, v0, v1, test, pieces) {
+  var rnd = mulberry32(P.seed * 7919 + band * 131 + 5);
+  var rows = Math.max(2, P.rows | 0);
+  var n = Math.max(1, Math.round(3600 * P.vegDensity / rows));
+  var w = P.weight * 0.9;
+  for (var i = 0; i < n; i++) {
+    var v = lerp(v0, v1, rnd());
+    var sp = plateSpan(v);
+    var u = lerp(sp[0], sp[1], rnd());
+    var m = plateMap(u, v);
+    var mx = m[0], my = m[1];
+    if (mx < 0 || mx > aspect || my < 0 || my > 1) continue;
+    var k = vegAt(mx, my, rnd);
+    if (k < 0) continue;
+    var h = sampleH(mx, my);
+    var pp = plateProject(u, v, h);
+    var x = pp[0], y = pp[1];
+    if (x < -20 || x > W + 20) continue;
+    if (test && !test(x, y - 2)) continue;
+    var dep = PJ.zdep;
+    var sc = P.p3d ? C3.dist / Math.max(1, dep) * C3.zoom
+                   : lerp(1 - P.stackConv, 1, plateEase(v));
+    /* on the solid block a symbol carries its own depth, so the ground in
+       front of it can paint over it like anything else */
+    var sink = pieces ? [] : out;
+    vegSymbol(sink, k, x, y, 3.4 * P.vegSize * sc * (0.8 + rnd() * 0.5),
+              styleColor(vegTone(h)), w);
+    if (pieces) for (var j = 0; j < sink.length; j++) pieces.push({ d: dep - 0.01, o: 3, it: sink[j] });
+  }
+}
+
+/* ==================================================================
+   5e.  the block as a solid.  with a camera on it there is no fixed front,
+   so nothing can be hidden by a horizon buffer any more: the ground, the
+   walls, the wires and the cover are all cut into pieces, each one carrying
+   how far off it is, and the whole lot is painted back to front.  the ribbon
+   between one row and the next is filled with the page itself, which is what
+   stops the far flank and the underside showing through the ground.
+   ================================================================== */
+function genPlateSolid() {
+  var R = Math.max(2, P.rows | 0);
+  var Cn = clamp(Math.round(W / Math.max(0.5, P.detail) * 0.45), 40, 320);
+  /* while the block is being turned it is redrawn on every pointer move, so
+     it is walked coarsely until the hand comes off it */
+  if (orbiting || draftMode) { R = Math.min(R, 40); Cn = Math.min(Cn, 130); }
+  var circ = (P.blockShape | 0) === 1;
+  var span = Math.max(0.001, 1 - P.sea);
+  var stride = Cn + 1;
+  var GX = new Float64Array(R * stride), GY = new Float64Array(R * stride);
+  var GH = new Float64Array(R * stride), GD = new Float64Array(R * stride);
+  var VS = new Float64Array(R), RD = new Float64Array(R);
+  var pieces = [];
+  var r, c, i, idx;
+
+  for (r = 0; r < R; r++) {
+    var v = r / (R - 1);
+    if (circ) v = lerp(0.015, 0.985, v);
+    VS[r] = v;
+    var sp = plateSpan(v), u0 = sp[0], u1 = sp[1];
+    var dsum = 0;
+    for (c = 0; c <= Cn; c++) {
+      var u = lerp(u0, u1, c / Cn);
+      var h = plateHeight(u, v);
+      var pp = plateProject(u, v, h);
+      idx = r * stride + c;
+      GX[idx] = pp[0]; GY[idx] = pp[1]; GH[idx] = h; GD[idx] = PJ.zdep;
+      dsum += PJ.zdep;
+    }
+    RD[r] = dsum / stride;
+  }
+
+  var bodyC = (P.bodySolid && P.occlusion !== 2) ? bodyFill(1) : null;
+  var mcols = meshColumns(R);
+
+  /* turned side on, a row runs away from the camera instead of across it, so
+     one depth for the whole of it no longer says what is in front of what.
+     cut the rows and the ribbons under them into that many pieces across, the
+     more the further the block has been swung round. */
+  var UC = clamp(Math.round(Math.abs(C3.sy) * 14) + 1, 1, 18);
+  var ck = new Int32Array(UC + 1);
+  for (i = 0; i <= UC; i++) ck[i] = Math.round(Cn * i / UC);
+
+  function chunkDepth(r0, r1, c0, c1) {
+    var sum = 0, m = 0, rr, cc;
+    for (rr = r0; rr <= r1; rr++) for (cc = c0; cc <= c1; cc++) { sum += GD[rr * stride + cc]; m++; }
+    return sum / Math.max(1, m);
+  }
+
+  /* the rows themselves */
+  for (r = 0; r < R; r++) {
+    for (var q = 0; q < UC; q++) {
+      var c0 = ck[q], c1 = ck[q + 1];
+      if (c1 <= c0) continue;
+      var run = null, runs = [];
+      for (c = c0; c <= c1; c++) {
+        idx = r * stride + c;
+        var x = GX[idx], y = GY[idx];
+        if (x < -60 || x > W + 60) { run = null; continue; }
+        if (!run) { run = { pts: [], hSum: 0, n: 0 }; runs.push(run); }
+        run.pts.push(x, y); run.hSum += GH[idx]; run.n++;
+      }
+      var dq = UC === 1 ? RD[r] : chunkDepth(r, r, c0, c1);
+      for (i = 0; i < runs.length; i++) {
+        if (runs[i].pts.length < 4) continue;
+        var t = clamp((runs[i].hSum / runs[i].n - P.sea) / span, 0, 1);
+        pieces.push({ d: dq, o: 2, it: { pts: runs[i].pts, w: styleWeight(t),
+                      c: styleColor(t), closed: false, t: t } });
+      }
+    }
+  }
+
+  /* the ribbon between one row and the next: the body of the block */
+  for (r = 0; r < R - 1; r++) {
+    for (q = 0; q < UC; q++) {
+      var b0 = ck[q], b1 = ck[q + 1];
+      if (b1 <= b0) continue;
+      var poly = [];
+      for (c = b0; c <= b1; c++) { idx = r * stride + c; poly.push(GX[idx], GY[idx]); }
+      for (c = b1; c >= b0; c--) { idx = (r + 1) * stride + c; poly.push(GX[idx], GY[idx]); }
+      var db = UC === 1 ? (RD[r] + RD[r + 1]) * 0.5 : chunkDepth(r, r + 1, b0, b1);
+      if (bodyC) pieces.push({ d: db, o: 0, it: { pts: poly, closed: true, fillPoly: true, fill: bodyC, w: 0 } });
+    }
+    if (P.meshMode) solidRungs(pieces, VS[r], VS[r + 1], mcols, span);
+    if (P.veg) plateVeg(null, r, VS[r], VS[r + 1], null, pieces);
+  }
+
+  /* and the walls of the cut, chunked so they interleave with the ground */
+  if (P.strata) {
+    var K = Math.max(1, P.strataCount | 0), fs = bedThickness(K);
+    var nch = clamp(R - 1, 4, 64);
+    if (circ) {
+      emitFace(pieces, faceSample(faceUV('ring', Math.max(96, Cn))), K, fs,
+               Math.max(12, Math.min(64, R)), { topEdge: true, ends: false });
+    } else {
+      emitFace(pieces, faceSample(faceUV('left', Math.max(24, R))), K, fs, nch, { topEdge: true, ends: true });
+      emitFace(pieces, faceSample(faceUV('right', Math.max(24, R))), K, fs, nch, { topEdge: true, ends: true });
+      emitFace(pieces, faceSample(faceUV('front', Cn)), K, fs, UC, { topEdge: false, ends: true });
+      emitFace(pieces, faceSample(faceUV('back', Cn)), K, fs, UC, { topEdge: false, ends: true });
+    }
+
+    /* the underside.  it only exists for a camera looking up at the block, and
+       when it does it is in front of everything else. */
+    if (P.camPitch < -1) {
+      var fl = [], n2 = Math.max(24, R);
+      var order = circ ? faceUV('ring', 96) : null;
+      if (circ) {
+        for (i = 0; i < order.length; i++) {
+          var pf = plateProjectD(order[i][0], order[i][1], P.strataDepth * H);
+          fl.push(pf[0], pf[1]);
+        }
+      } else {
+        var corners = [[0, 0], [1, 0], [1, 1], [0, 1]];
+        for (i = 0; i < 4; i++) {
+          var a = corners[i], b = corners[(i + 1) % 4];
+          for (var j = 0; j < n2; j++) {
+            var pf2 = plateProjectD(lerp(a[0], b[0], j / n2), lerp(a[1], b[1], j / n2), P.strataDepth * H);
+            fl.push(pf2[0], pf2[1]);
+          }
+        }
+      }
+      if (P.faceSolid) pieces.push({ d: -1e9, o: 0, it: { pts: fl, closed: true, fillPoly: true, fill: bodyFill(1.5), w: 0 } });
+      pieces.push({ d: -1e9, o: 1, it: { pts: fl, w: P.weight * 1.4, c: styleColor(0.35), closed: true, t: 0.35 } });
+    }
+  }
+
+  sortPieces(pieces);
+  var out = [];
+  for (i = 0; i < pieces.length; i++) out.push(pieces[i].it);
+  return out;
+}
+
+/* the cross wires of the solid block: no horizon test, the ground in front
+   paints over them instead */
+function solidRungs(pieces, v0, v1, mcols, span) {
+  var sub = 5, c, s;
+  for (c = 0; c <= mcols; c++) {
+    var q = c / mcols;
+    var pts = [], hS = 0, dS = 0, ok = true;
+    for (s = 0; s <= sub; s++) {
+      var v = lerp(v0, v1, s / sub);
+      var sp = plateSpan(v);
+      var u = lerp(sp[0], sp[1], q);
+      var h = plateHeight(u, v);
+      var pp = plateProject(u, v, h);
+      if (pp[0] < -60 || pp[0] > W + 60) { ok = false; break; }
+      pts.push(pp[0], pp[1]); hS += h; dS += PJ.zdep;
+    }
+    if (!ok || pts.length < 4) continue;
+    var t = clamp((hS / (sub + 1) - P.sea) / span, 0, 1);
+    pieces.push({ d: dS / (sub + 1), o: 2,
+                  it: { pts: pts, w: styleWeight(t) * 0.92, c: styleColor(t), closed: false, t: t } });
+
+    if (P.meshTri && c < mcols) {
+      var tp = [], hS2 = 0, dS2 = 0, ok2 = true;
+      for (s = 0; s <= sub; s++) {
+        var f = s / sub;
+        var v2 = lerp(v0, v1, f);
+        var sp2 = plateSpan(v2);
+        var u2 = lerp(sp2[0], sp2[1], (c + f) / mcols);
+        var h2 = plateHeight(u2, v2);
+        var pp2 = plateProject(u2, v2, h2);
+        if (pp2[0] < -60 || pp2[0] > W + 60) { ok2 = false; break; }
+        tp.push(pp2[0], pp2[1]); hS2 += h2; dS2 += PJ.zdep;
+      }
+      if (ok2 && tp.length >= 4) {
+        var t2 = clamp((hS2 / (sub + 1) - P.sea) / span, 0, 1);
+        pieces.push({ d: dS2 / (sub + 1), o: 2,
+                      it: { pts: tp, w: styleWeight(t2) * 0.7, c: styleColor(t2), closed: false, t: t2 } });
+      }
+    }
+  }
 }
 
 function genFlow() {
@@ -1911,8 +2662,73 @@ function applyWobble(ls) {
       for (var q = 0; q < L.polys.length; q++) wobblePts(L.polys[q], true, i * 31 + q);
       continue;
     }
+    /* the silhouette a fill cuts has to stay exactly where the geometry put
+       it, or the body of the block comes apart at its own edges */
+    if (L.fillPoly || !L.pts) continue;
     wobblePts(L.pts, L.closed, i);
   }
+}
+
+/* ==================================================================
+   5g.  line work.  the same path, broken into marks along its own arc
+   length - dots, dashes, crosses, or a dither that thins the marks out
+   toward the light end of the ramp so the tone of a line becomes the
+   density of its stipple.  every mark is still real geometry: one object
+   per source line, drawn as one path of many little subpaths.
+   ================================================================== */
+function lwHash(x, y) {
+  return hash1(x * 0.73113 + y * 1.41731 + 0.5);
+}
+
+function applyLinework(ls) {
+  var mode = P.linework | 0;
+  if (!mode) return ls;
+  var out = [];
+  var base = Math.max(0.8, P.lwSpacing);
+
+  for (var i = 0; i < ls.length; i++) {
+    var L = ls[i];
+    if (L.seaFill || L.fillPoly || L.fill || L.marks || !L.pts || L.pts.length < 4) {
+      out.push(L); continue;
+    }
+    var pts = L.pts;
+    if (L.closed) pts = pts.concat([pts[0], pts[1]]);
+    var t = L.t === undefined ? 0.5 : L.t;
+    /* dither: the darker the tone, the tighter the marks sit */
+    var step = mode === 3 ? base * lerp(0.55, 2.6, t) : base;
+    var dens = mode === 3 ? clamp(1.15 - t, 0.04, 1) : 1;
+    var marks = [], carry = step * lwHash(pts[0], pts[1]);
+
+    for (var k = 0; k + 3 < pts.length; k += 2) {
+      var x0 = pts[k], y0 = pts[k + 1];
+      var dx = pts[k + 2] - x0, dy = pts[k + 3] - y0;
+      var len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 1e-6) continue;
+      var ux = dx / len, uy = dy / len;
+      var d = carry;
+      while (d < len) {
+        var px = x0 + ux * d, py = y0 + uy * d;
+        if (mode !== 3 || lwHash(px * 1.7 + 3.3, py * 1.31 - 1.1) < dens) {
+          var j = P.lwJitter * (lwHash(px * 0.37, py * 0.41) - 0.5) * step;
+          px += -uy * j; py += ux * j;
+          var ml = mode === 1 ? 0.01
+                 : mode === 3 ? step * 0.14 * (0.4 + P.lwLen)
+                 : step * clamp(P.lwLen, 0.04, 1);
+          if (mode === 4) {
+            var a = ml * 0.5;
+            marks.push(px - a, py - a, px + a, py + a, px - a, py + a, px + a, py - a);
+          } else {
+            marks.push(px, py, px + ux * ml, py + uy * ml);
+          }
+        }
+        d += step;
+      }
+      carry = d - len;
+    }
+    if (!marks.length) continue;
+    out.push({ marks: marks, w: L.w * P.lwWeight, c: L.c, t: t });
+  }
+  return out;
 }
 
 function generate() {
@@ -1936,10 +2752,11 @@ function generate() {
       if (P.rivers) genRivers(ls);
       if (P.paths) genPaths(ls);
     }
+    if (P.veg) genVeg(ls);
   }
 
   applyWobble(ls);
-  lines = ls;
+  lines = applyLinework(ls);
   return performance.now() - t0;
 }
 
@@ -1969,7 +2786,7 @@ function draw() {
   var dashed = false;
 
   for (var i = 0; i < lines.length; i++) {
-    var L = lines[i], pts = L.pts, n = pts.length;
+    var L = lines[i], pts = L.pts, n = pts ? pts.length : 0;
 
     /* the sea is the page minus the land: one path of the whole plate plus
        every closed coastline, filled even-odd, so a lake inside an island
@@ -1988,7 +2805,35 @@ function draw() {
       continue;
     }
 
+    /* a run of marks is one path of many little subpaths, so a stippled
+       contour still costs one stroke rather than four hundred */
+    if (L.marks) {
+      var mk = L.marks;
+      if (dashed) { ctx.setLineDash([]); dashed = false; }
+      ctx.beginPath();
+      for (var z = 0; z + 3 < mk.length; z += 4) {
+        ctx.moveTo(mk[z], mk[z + 1]); ctx.lineTo(mk[z + 2], mk[z + 3]);
+      }
+      ctx.strokeStyle = L.c; ctx.lineWidth = L.w;
+      ctx.stroke();
+      continue;
+    }
+
     if (n < 4) continue;
+
+    /* the body and the walls of a solid block: filled outright, so whatever
+       stands behind them is simply painted out */
+    if (L.fillPoly) {
+      if (dashed) { ctx.setLineDash([]); dashed = false; }
+      ctx.beginPath();
+      ctx.moveTo(pts[0], pts[1]);
+      for (var fq = 2; fq < n; fq += 2) ctx.lineTo(pts[fq], pts[fq + 1]);
+      ctx.closePath();
+      ctx.fillStyle = L.fill;
+      ctx.fill();
+      if (L.w > 0) { ctx.strokeStyle = L.c; ctx.lineWidth = L.w; ctx.stroke(); }
+      continue;
+    }
 
     if (L.dash) { ctx.setLineDash(L.dash); dashed = true; }
     else if (dashed) { ctx.setLineDash([]); dashed = false; }
@@ -2113,10 +2958,17 @@ function status() {
     s += ' · slope <span class="live">' + hoverS.toFixed(2) + '</span>';
     if (hoverH < P.sea) s += ' · <span class="warn">below sea</span>';
   }
+  if (P.midiOn) {
+    s += ' · midi <span class="' + (MIDI.out ? 'live' : 'warn') + '">' +
+         (MIDI.out ? (MIDI.out.name || MIDI.out.id).slice(0, 18) : (MIDI.err || 'no port')) + '</span>';
+    if (MIDI.note1 >= 0) s += ' <span class="k">' + midiName(MIDI.note1) + '</span>';
+    if (MIDI.note2 >= 0) s += ' <span class="k">' + midiName(MIDI.note2) + '</span>';
+  }
   if (P.drift) s += ' · <span class="live">drifting</span>';
   if (draftMode) s += ' · <span class="warn">draft</span>';
   if (flashMsg) s += ' · <span class="live">' + flashMsg + '</span>';
   document.getElementById('status').innerHTML = s;
+  syncTags();
 }
 
 var flashMsg = '', flashTimer = null;
@@ -2125,6 +2977,200 @@ function flash(msg) {
   status();
   clearTimeout(flashTimer);
   flashTimer = setTimeout(function () { flashMsg = ''; status(); }, 4500);
+}
+
+/* ==================================================================
+   8b.  midi.  the cursor is the instrument.  one voice plays the ground
+   under it; the other plays how far that point lies from the water, rooted
+   on a C - stand in the sea and it is a plain C, walk inland and it climbs
+   the scale.  the distance is a real distance transform of the coastline,
+   not the height, so a low plain far from any shore still sings high.
+   ================================================================== */
+var MIDI = { access: null, out: null, on: false, err: '', n1: -1, n2: -1,
+             last: 0, lastCC1: -1, lastCC2: -1, note1: -1, note2: -1 };
+var SCALES = [
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+  [0, 2, 4, 5, 7, 9, 11],
+  [0, 2, 3, 5, 7, 8, 10],
+  [0, 2, 4, 7, 9],
+  [0, 2, 4, 6, 8, 10]
+];
+var coastD = null, coastKey = '';
+
+/* chamfer distance out from the water, in grid cells.  two passes is enough
+   for the accuracy an ear can hear. */
+function coastField() {
+  var key = fieldVer + ':' + P.sea.toFixed(4) + ':' + gw + 'x' + gh;
+  if (coastKey === key && coastD) return coastD;
+  var n = gw * gh, d = new Float32Array(n), i, j, idx, v, wet = false;
+  for (i = 0; i < n; i++) {
+    if (field[i] < P.sea) { d[i] = 0; wet = true; } else d[i] = 1e9;
+  }
+  if (!wet) { for (i = 0; i < n; i++) d[i] = -1; }
+  else {
+    for (j = 0; j < gh; j++) for (i = 0; i < gw; i++) {
+      idx = j * gw + i; v = d[idx];
+      if (i > 0) v = Math.min(v, d[idx - 1] + 1);
+      if (j > 0) v = Math.min(v, d[idx - gw] + 1);
+      if (i > 0 && j > 0) v = Math.min(v, d[idx - gw - 1] + 1.4142);
+      if (i < gw - 1 && j > 0) v = Math.min(v, d[idx - gw + 1] + 1.4142);
+      d[idx] = v;
+    }
+    for (j = gh - 1; j >= 0; j--) for (i = gw - 1; i >= 0; i--) {
+      idx = j * gw + i; v = d[idx];
+      if (i < gw - 1) v = Math.min(v, d[idx + 1] + 1);
+      if (j < gh - 1) v = Math.min(v, d[idx + gw] + 1);
+      if (i < gw - 1 && j < gh - 1) v = Math.min(v, d[idx + gw + 1] + 1.4142);
+      if (i > 0 && j < gh - 1) v = Math.min(v, d[idx + gw - 1] + 1.4142);
+      d[idx] = v;
+    }
+  }
+  coastD = d; coastKey = key;
+  return d;
+}
+
+/* how far this point is from the water, in map units (the sheet is 1 tall) */
+function coastAt(mx, my) {
+  if (!field || !gw) return -1;
+  var d = coastField();
+  var i = clamp(Math.round(mx / aspect * (gw - 1)), 0, gw - 1);
+  var j = clamp(Math.round(my * (gh - 1)), 0, gh - 1);
+  var v = d[j * gw + i];
+  return v < 0 ? -1 : v / gh;
+}
+
+function midiSend(a, b, c) {
+  if (!MIDI.out) return;
+  try { MIDI.out.send([a, b, c]); } catch (e) { /* a port can vanish mid-gesture */ }
+}
+function noteOn(ch, n, v) { midiSend(0x90 | (ch & 15), n & 127, v & 127); }
+function noteOff(ch, n) { if (n >= 0) midiSend(0x80 | (ch & 15), n & 127, 0); }
+function midiCC(ch, cc, v) { midiSend(0xB0 | (ch & 15), cc & 127, clamp(v, 0, 127) | 0); }
+
+function midiAllOff() {
+  var ch = clamp((P.midiChan | 0) - 1, 0, 15);
+  noteOff(ch, MIDI.note1);
+  noteOff((ch + 1) & 15, MIDI.note2);
+  MIDI.note1 = -1; MIDI.note2 = -1;
+}
+
+/* the nearest degree of the chosen scale at or above a note */
+function snapScale(note, root) {
+  var sc = SCALES[clamp(P.midiScale | 0, 0, SCALES.length - 1)];
+  var rel = note - root;
+  var oct = Math.floor(rel / 12), pc = rel - oct * 12;
+  var best = sc[0], bd = 99;
+  for (var i = 0; i < sc.length; i++) {
+    var dd = Math.abs(sc[i] - pc);
+    if (dd < bd) { bd = dd; best = sc[i]; }
+  }
+  return root + oct * 12 + best;
+}
+/* the k-th degree of the scale above the root */
+function degree(root, k) {
+  var sc = SCALES[clamp(P.midiScale | 0, 0, SCALES.length - 1)];
+  var oct = Math.floor(k / sc.length), i = k - oct * sc.length;
+  return root + oct * 12 + sc[i];
+}
+/* the lowest C at or above the bottom of the range - the sea's own note */
+function seaRoot(lo) {
+  return Math.ceil(lo / 12) * 12;
+}
+
+function midiPortList() {
+  var sel = document.getElementById('midiport');
+  var keep = MIDI.out ? MIDI.out.id : '';
+  sel.innerHTML = '';
+  var opts = [];
+  if (MIDI.access) MIDI.access.outputs.forEach(function (o) { opts.push(o); });
+  if (!opts.length) {
+    var o0 = document.createElement('option');
+    o0.value = ''; o0.textContent = MIDI.err || 'no midi outputs';
+    sel.appendChild(o0);
+    MIDI.out = null;
+    return;
+  }
+  for (var i = 0; i < opts.length; i++) {
+    var op = document.createElement('option');
+    op.value = opts[i].id; op.textContent = opts[i].name || opts[i].id;
+    sel.appendChild(op);
+  }
+  var pick = null;
+  for (i = 0; i < opts.length; i++) if (opts[i].id === keep) pick = opts[i];
+  MIDI.out = pick || opts[0];
+  sel.value = MIDI.out.id;
+}
+
+function midiEnable(on) {
+  P.midiOn = on;
+  setToggle('btn-midi', on);
+  if (!on) { midiAllOff(); status(); return; }
+  if (MIDI.access) { midiPortList(); status(); return; }
+  if (!navigator.requestMIDIAccess) {
+    MIDI.err = 'no web midi in this browser';
+    P.midiOn = false; setToggle('btn-midi', false);
+    midiPortList(); flash(MIDI.err); return;
+  }
+  navigator.requestMIDIAccess({ sysex: false }).then(function (acc) {
+    MIDI.access = acc; MIDI.err = '';
+    acc.onstatechange = function () { midiPortList(); status(); };
+    midiPortList();
+    flash(MIDI.out ? 'midi out: ' + (MIDI.out.name || MIDI.out.id) : 'no midi outputs');
+    status();
+  }, function (e) {
+    MIDI.err = 'midi refused: ' + ((e && e.name) || 'blocked');
+    P.midiOn = false; setToggle('btn-midi', false);
+    midiPortList(); flash(MIDI.err); status();
+  });
+}
+
+/* called from the pointer as it crosses the sheet */
+function midiUpdate(mx, my, h, slope) {
+  if (!P.midiOn || !MIDI.out) return;
+  var now = performance.now();
+  if (now - MIDI.last < 40) return;
+  MIDI.last = now;
+
+  var lo = Math.min(P.midiLow | 0, P.midiHigh | 0);
+  var hi = Math.max(P.midiLow | 0, P.midiHigh | 0);
+  var ch = clamp((P.midiChan | 0) - 1, 0, 15);
+  var vel = clamp(P.midiVel | 0, 1, 127);
+
+  if (P.midiHeight) {
+    var t = clamp(h, 0, 1);
+    var n1 = snapScale(Math.round(lerp(lo, hi, t)), seaRoot(lo));
+    if (n1 !== MIDI.note1) {
+      noteOff(ch, MIDI.note1);
+      noteOn(ch, n1, clamp(Math.round(vel * (0.55 + Math.min(1, slope) * 0.45)), 1, 127));
+      MIDI.note1 = n1;
+    }
+    var c1 = Math.round(t * 127);
+    if (c1 !== MIDI.lastCC1) { midiCC(ch, 1, c1); MIDI.lastCC1 = c1; }
+  } else if (MIDI.note1 >= 0) { noteOff(ch, MIDI.note1); MIDI.note1 = -1; }
+
+  if (P.midiCoast) {
+    var ch2 = (ch + 1) & 15;
+    var root = seaRoot(lo);
+    var dist = coastAt(mx, my);
+    var wet = h < P.sea;
+    var f = (wet || dist < 0) ? 0 : clamp(dist / Math.max(0.01, P.midiRange), 0, 1);
+    var sc = SCALES[clamp(P.midiScale | 0, 0, SCALES.length - 1)];
+    var steps = Math.max(1, Math.floor((hi - root) / 12 * sc.length));
+    var n2 = degree(root, Math.round(f * steps));
+    if (n2 > hi) n2 = hi;
+    if (n2 !== MIDI.note2) {
+      noteOff(ch2, MIDI.note2);
+      noteOn(ch2, n2, vel);
+      MIDI.note2 = n2;
+    }
+    var c2 = Math.round(f * 127);
+    if (c2 !== MIDI.lastCC2) { midiCC(ch2, 11, c2); MIDI.lastCC2 = c2; }
+  } else if (MIDI.note2 >= 0) { noteOff((ch + 1) & 15, MIDI.note2); MIDI.note2 = -1; }
+}
+
+function midiName(n) {
+  var names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  return names[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
 }
 
 /* ==================================================================
@@ -2191,6 +3237,16 @@ function syncAll() {
   setToggle('btn-mesh', P.meshMode); setToggle('btn-meshsquare', P.meshSquare);
   setToggle('btn-strata', P.strata); setToggle('btn-strataside', P.strataSide);
   setToggle('btn-rivers', P.rivers); setToggle('btn-paths', P.paths);
+  setToggle('btn-p3d', P.p3d); setToggle('btn-bodysolid', P.bodySolid);
+  setToggle('btn-facesolid', P.faceSolid); setToggle('btn-meshtri', P.meshTri);
+  setToggle('btn-veg', P.veg);
+  setToggle('btn-midi', P.midiOn); setToggle('btn-midiheight', P.midiHeight);
+  setToggle('btn-midicoast', P.midiCoast);
+  document.getElementById('blockshape').value = String(P.blockShape);
+  document.getElementById('hatchstyle').value = String(P.strataHatchStyle);
+  document.getElementById('linework').value = String(P.linework);
+  document.getElementById('vegmix').value = String(P.vegMix);
+  document.getElementById('midiscale').value = String(P.midiScale);
   syncModeUI();
   syncNodeUI();
 }
@@ -2214,10 +3270,22 @@ function bindToggle(id, key, dirty) {
 
 var MODE_HINTS = [
   'iso-lines through the height field. every closed loop is a real level set, so the map reads as a survey sheet — index contours thicken every nth line, and the coastline is just the sea-level contour drawn heavy.',
-  'the field sliced into parallel sections and stacked back to front. hidden-line removal hides whatever a nearer ridge covers, which is what turns a pile of wiggles into a landform. add the cross wires for a mesh, or cut the front away for a strata block.',
+  'the field sliced into parallel sections and stacked back to front. hidden-line removal hides whatever a nearer ridge covers, which is what turns a pile of wiggles into a landform. add the cross wires for a mesh, or cut the front away for a strata block — and put the whole thing on a camera with <b>3d block</b>, then shift+drag to turn it.',
   'streamlines released across the plate and carried downhill. on eroded ground they collect into the drainage network the droplets cut.',
   'short strokes pointing downhill, weighted by steepness. the flats stay bare, so the shape is carried entirely by stroke density.'
 ];
+
+/* the little labels beside a section heading, kept in step with its state */
+var LW_NAMES = ['', 'dots', 'dashes', 'dither', 'crosses'];
+function syncTags() {
+  document.getElementById('lw-tag').textContent = LW_NAMES[P.linework | 0] || '';
+  document.getElementById('veg-tag').textContent =
+    P.veg ? (VEG_NAMES[P.vegMix | 0] || '') : '';
+  document.getElementById('midi-tag').textContent =
+    P.midiOn ? (MIDI.out ? 'sending' : 'no port') : '';
+  document.getElementById('ridge-tag').textContent =
+    P.mode === 1 && P.p3d ? (P.blockShape === 1 ? '3d core' : '3d block') : '';
+}
 
 function syncModeUI() {
   var names = ['contour', 'ridge', 'flow', 'hachure'];
@@ -2297,6 +3365,29 @@ function buildPanel() {
   document.getElementById('occlusion').addEventListener('change', function () {
     P.occlusion = +this.value; invalidate('lines');
   });
+  document.getElementById('blockshape').addEventListener('change', function () {
+    P.blockShape = +this.value; invalidate('lines');
+  });
+  document.getElementById('hatchstyle').addEventListener('change', function () {
+    P.strataHatchStyle = +this.value; invalidate('lines');
+  });
+  document.getElementById('linework').addEventListener('change', function () {
+    P.linework = +this.value; syncModeUI(); invalidate('lines');
+  });
+  document.getElementById('vegmix').addEventListener('change', function () {
+    P.vegMix = +this.value; invalidate('lines');
+  });
+  document.getElementById('midiscale').addEventListener('change', function () {
+    P.midiScale = +this.value; midiAllOff(); status();
+  });
+  document.getElementById('midiport').addEventListener('change', function () {
+    if (!MIDI.access) return;
+    var id = this.value, found = null;
+    MIDI.access.outputs.forEach(function (o) { if (o.id === id) found = o; });
+    midiAllOff();
+    MIDI.out = found;
+    status();
+  });
 
   var modeBtns = document.querySelectorAll('#moderow .tool');
   for (i = 0; i < modeBtns.length; i++) {
@@ -2316,6 +3407,28 @@ function buildPanel() {
   bindToggle('btn-strataside', 'strataSide', 'lines');
   bindToggle('btn-rivers', 'rivers', 'lines');
   bindToggle('btn-paths', 'paths', 'lines');
+  bindToggle('btn-p3d', 'p3d', 'lines');
+  bindToggle('btn-bodysolid', 'bodySolid', 'lines');
+  bindToggle('btn-facesolid', 'faceSolid', 'lines');
+  bindToggle('btn-meshtri', 'meshTri', 'lines');
+  bindToggle('btn-veg', 'veg', 'lines');
+
+  document.getElementById('btn-midi').addEventListener('click', function () {
+    midiEnable(!P.midiOn);
+  });
+  document.getElementById('btn-midiheight').addEventListener('click', function () {
+    P.midiHeight = !P.midiHeight;
+    setToggle('btn-midiheight', P.midiHeight);
+    if (!P.midiHeight) midiAllOff();
+    status();
+  });
+  document.getElementById('btn-midicoast').addEventListener('click', function () {
+    P.midiCoast = !P.midiCoast;
+    setToggle('btn-midicoast', P.midiCoast);
+    if (!P.midiCoast) midiAllOff();
+    status();
+  });
+  midiPortList();
   bindToggle('btn-smoothlines', 'smoothLines', 'lines');
   bindToggle('btn-flowsea', 'flowSea', 'lines');
   bindToggle('btn-handles', 'showNodes', 'draw');
@@ -2364,7 +3477,21 @@ function buildPanel() {
     document.getElementById('fileinput').click();
   });
   document.getElementById('fileinput').addEventListener('change', loadJSON);
+  document.getElementById('btn-presetsave').addEventListener('click', exportPreset);
+  document.getElementById('btn-presetall').addEventListener('click', exportAllPresets);
+  document.getElementById('btn-presetload').addEventListener('click', function () {
+    document.getElementById('presetinput').click();
+  });
+  document.getElementById('presetinput').addEventListener('change', importPresets);
+  document.getElementById('btn-presetclear').addEventListener('click', function () {
+    if (!USER_PRESETS.length) { flash('no presets of your own'); return; }
+    USER_PRESETS = [];
+    storePresets();
+    buildPresets();
+    flash('imported presets forgotten');
+  });
 
+  loadStoredPresets();
   buildPresets();
 
   var panel = document.getElementById('panel');
@@ -2427,6 +3554,31 @@ var PRESETS = [
       stackPersp: 0.5, stackZoom: 0.5, stackY: 0.06, strata: true, strataSide: true,
       strataCount: 7, strataDepth: 0.16, strataDamp: 0.6, strataWave: 0.45, strataHatch: 7,
       palette: 7, colormode: 1, weight: 0.8, weightVar: 0.3, wobble: 0.3, wobbleDrift: 0.5 } },
+  { name: 'turned block', p: { mode: 1, fractal: 1, scale: 2.2, octaves: 6, gain: 0.5, warp: 0.3,
+      island: 0.22, erosion: 0.5, sea: 0.06, rows: 56, relief: 0.5, spread: 0.62, skew: 0,
+      detail: 1.2, occlusion: 1, p3d: true, camYaw: 34, camPitch: 24, camPersp: 0.4, camZoom: 1,
+      bodySolid: true, faceSolid: true, bodyShade: 0.14, plateW: 0.78, stackConv: 0, stackPersp: 0,
+      stackZoom: 0.66, stackY: 0, meshMode: true, meshSquare: true, strata: true, strataSide: true,
+      strataCount: 8, strataDepth: 0.2, strataDamp: 0.55, strataWave: 0.4, strataHatch: 6,
+      strataHatchStyle: 0, strataHatchAngle: 18, strataHatchEvery: 2,
+      palette: 1, colormode: 1, weight: 0.7, weightVar: 0.35, wobble: 0.3, wobbleDrift: 0.5 } },
+  { name: 'core sample', p: { mode: 1, fractal: 0, scale: 3.0, octaves: 6, gain: 0.52, warp: 0.45,
+      island: 0.4, erosion: 0.45, sea: 0.18, rows: 52, relief: 0.44, spread: 0.6, skew: 0,
+      detail: 1.2, occlusion: 1, p3d: true, blockShape: 1, camYaw: 20, camPitch: 30, camPersp: 0.5,
+      camZoom: 1.05, bodySolid: true, faceSolid: true, bodyShade: 0.2, plateW: 0.62,
+      stackZoom: 0.55, stackY: 0.02, strata: true, strataCount: 9, strataDepth: 0.26,
+      strataDamp: 0.5, strataWave: 0.5, strataHatch: 5, strataHatchStyle: 2, strataHatchEvery: 1,
+      veg: true, vegMix: 0, vegDensity: 0.5, vegSize: 0.9, vegLine: 0.7,
+      palette: 5, colormode: 1, weight: 0.7, weightVar: 0.4, wobble: 0.25, wobbleDrift: 0.5 } },
+  { name: 'stippled sheet', p: { mode: 0, fractal: 0, scale: 2.8, octaves: 6, gain: 0.5, warp: 0.4,
+      island: 0.38, erosion: 0.5, sea: 0.24, levels: 30, indexEvery: 0, bathy: false, coast: true,
+      coastWeight: 2.2, linework: 3, lwSpacing: 3.2, lwLen: 0.5, lwJitter: 0.5, lwWeight: 1.5,
+      palette: 2, colormode: 1, weight: 0.55, weightVar: 0.6, wobble: 0.5, wobbleDrift: 0.6 } },
+  { name: 'wooded survey', p: { mode: 0, fractal: 0, scale: 2.6, octaves: 6, gain: 0.5, warp: 0.45,
+      island: 0.42, erosion: 0.6, smooth: 1, sea: 0.26, levels: 26, indexEvery: 5, bathy: false,
+      coast: true, coastWeight: 2.6, seaFill: true, rivers: true, riverThresh: 0.6,
+      veg: true, vegMix: 0, vegDensity: 0.6, vegSize: 1, vegLine: 0.78, vegPatch: 0.7,
+      palette: 1, colormode: 1, weight: 0.6, weightVar: 0.3, wobble: 0.6, wobbleDrift: 0.6 } },
   { name: 'trail sheet', p: { mode: 0, fractal: 0, scale: 2.6, octaves: 6, gain: 0.5, warp: 0.45,
       island: 0.4, erosion: 0.6, smooth: 1, sea: 0.24, levels: 34, indexEvery: 5, indexWeight: 2.2,
       bathy: false, coast: true, coastWeight: 2.6, seaFill: true, seaFillAlpha: 1, rivers: true,
@@ -2435,26 +3587,149 @@ var PRESETS = [
       wobbleDrift: 0.6 } }
 ];
 
+/* presets imported from a file live next to the built-in ones and, where the
+   browser lets us, survive a reload */
+var USER_PRESETS = [];
+var PRESET_KEY = 'relief.presets.v1';
+
 function buildPresets() {
   var sel = document.getElementById('preset');
+  sel.innerHTML = '';
   var o0 = document.createElement('option');
-  o0.value = '-1'; o0.textContent = '— presets —';
+  o0.value = ''; o0.textContent = '— presets —';
   sel.appendChild(o0);
+
+  var g = document.createElement('optgroup');
+  g.label = 'built in';
   for (var i = 0; i < PRESETS.length; i++) {
     var o = document.createElement('option');
-    o.value = String(i); o.textContent = PRESETS[i].name;
-    sel.appendChild(o);
+    o.value = 'b' + i; o.textContent = PRESETS[i].name;
+    g.appendChild(o);
   }
-  sel.addEventListener('change', function () {
-    var i = +sel.value;
-    if (i < 0) return;
-    applyPreset(PRESETS[i].p);
-  });
+  sel.appendChild(g);
+
+  if (USER_PRESETS.length) {
+    var g2 = document.createElement('optgroup');
+    g2.label = 'my presets';
+    for (i = 0; i < USER_PRESETS.length; i++) {
+      var o2 = document.createElement('option');
+      o2.value = 'u' + i; o2.textContent = USER_PRESETS[i].name;
+      g2.appendChild(o2);
+    }
+    sel.appendChild(g2);
+  }
+  if (!sel._bound) {
+    sel._bound = true;
+    sel.addEventListener('change', function () {
+      var v = sel.value;
+      if (!v) return;
+      var i = +v.slice(1);
+      var pr = v.charAt(0) === 'u' ? USER_PRESETS[i] : PRESETS[i];
+      if (!pr) return;
+      document.getElementById('presetname').value = pr.name;
+      applyPreset(pr.p || pr.params);
+    });
+  }
+}
+
+/* the parameters worth carrying between sheets.  the seed goes with them, so
+   a preset of your own comes back on the same ground; the midi port and
+   whether the pen is drifting belong to this session, not to the look. */
+var PRESET_SKIP = { midiOn: 1, drift: 1, showNodes: 1 };
+
+function presetParams() {
+  var o = {};
+  for (var k in P) if (!PRESET_SKIP[k]) o[k] = P[k];
+  return o;
+}
+function presetSlug(n) {
+  return (n || 'preset').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'preset';
+}
+function storePresets() {
+  try { window.localStorage.setItem(PRESET_KEY, JSON.stringify(USER_PRESETS)); }
+  catch (e) { /* private windows and file:// hosts say no; the file still saved */ }
+}
+function loadStoredPresets() {
+  try {
+    var raw = window.localStorage.getItem(PRESET_KEY);
+    if (!raw) return;
+    var d = JSON.parse(raw);
+    if (Array.isArray(d)) USER_PRESETS = d.filter(function (x) { return x && x.name && x.p; });
+  } catch (e) { USER_PRESETS = []; }
+}
+
+/* one preset, an array of them, or a whole saved sheet - all three read */
+function readPresetFile(d) {
+  var list = [];
+  function one(x) {
+    if (!x || typeof x !== 'object') return;
+    var params = x.params || x.p;
+    if (!params || typeof params !== 'object') return;
+    var clean = {};
+    for (var k in params) if (P[k] !== undefined && typeof params[k] === typeof P[k]) clean[k] = params[k];
+    if (!Object.keys(clean).length) return;
+    list.push({ name: String(x.name || 'imported ' + (list.length + 1)).slice(0, 48), p: clean });
+  }
+  if (Array.isArray(d)) for (var i = 0; i < d.length; i++) one(d[i]);
+  else if (Array.isArray(d.presets)) for (i = 0; i < d.presets.length; i++) one(d.presets[i]);
+  else one(d);
+  return list;
+}
+
+function addUserPresets(list) {
+  for (var i = 0; i < list.length; i++) {
+    var at = -1;
+    for (var j = 0; j < USER_PRESETS.length; j++) if (USER_PRESETS[j].name === list[i].name) at = j;
+    if (at >= 0) USER_PRESETS[at] = list[i]; else USER_PRESETS.push(list[i]);
+  }
+  storePresets();
+  buildPresets();
+}
+
+function exportPreset() {
+  var el = document.getElementById('presetname');
+  var name = (el.value || '').trim() || ('relief ' + stamp());
+  el.value = name;
+  var d = { format: 'relief-preset', version: 1, name: name, params: presetParams() };
+  addUserPresets([{ name: name, p: d.params }]);
+  download('relief_preset_' + presetSlug(name) + '.json',
+    new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }));
+}
+
+function exportAllPresets() {
+  var all = [];
+  for (var i = 0; i < USER_PRESETS.length; i++) {
+    all.push({ name: USER_PRESETS[i].name, params: USER_PRESETS[i].p });
+  }
+  if (!all.length) { flash('no presets of your own yet'); return; }
+  download('relief_presets.json',
+    new Blob([JSON.stringify({ format: 'relief-preset-set', version: 1, presets: all }, null, 2)],
+             { type: 'application/json' }));
+}
+
+function importPresets(e) {
+  var f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function () {
+    var list;
+    try { list = readPresetFile(JSON.parse(rd.result)); }
+    catch (err) { flash('could not read that preset: ' + err.message); return; }
+    if (!list.length) { flash('no presets in that file'); return; }
+    addUserPresets(list);
+    document.getElementById('presetname').value = list[0].name;
+    document.getElementById('preset').value = 'u' + USER_PRESETS.map(function (x) { return x.name; }).indexOf(list[0].name);
+    applyPreset(list[0].p);
+    flash(list.length === 1 ? 'imported ' + list[0].name : 'imported ' + list.length + ' presets');
+  };
+  rd.readAsText(f);
 }
 
 /* the switches a preset does not mention go back to off, so a mesh or a set of
    rivers does not follow you into the next sheet */
-var PRESET_OFF = { meshMode: false, strata: false, seaFill: false, rivers: false, paths: false };
+var PRESET_OFF = { meshMode: false, strata: false, seaFill: false, rivers: false, paths: false,
+                   p3d: false, veg: false, meshTri: false, blockShape: 0, linework: 0 };
 
 function applyPreset(src) {
   for (var k in PRESET_OFF) if (!(k in src)) P[k] = PRESET_OFF[k];
@@ -2470,7 +3745,7 @@ function applyPreset(src) {
 /* ==================================================================
    11.  pointer interaction with the nodes
    ================================================================== */
-var drag = null;
+var drag = null, orbit = null, orbiting = false;
 
 function hitTest(px, py) {
   /* centre first, then the radius ring - the ring is the resize handle */
@@ -2513,6 +3788,17 @@ canvas.addEventListener('pointerdown', function (e) {
     return;
   }
 
+  /* with the block on a camera, shift+drag on empty ground turns it.  a
+     shift+click that never moves still plants a basin, so the one gesture
+     serves both. */
+  if (e.shiftKey && P.mode === 1 && P.p3d) {
+    orbit = { x: px, y: py, yaw: P.camYaw, pitch: P.camPitch, moved: 0, id: e.pointerId };
+    canvas.setPointerCapture(e.pointerId);
+    canvas.classList.add('grabbing');
+    orbiting = true;
+    return;
+  }
+
   /* empty ground: a click plants a node, shift plants a basin */
   var amp = e.shiftKey ? -Math.abs(P.nodeAmp) : P.nodeAmp;
   nodes.push({ x: px / H, y: py / H, a: amp, r: P.nodeRadius, k: P.nodeKernel });
@@ -2524,6 +3810,16 @@ canvas.addEventListener('pointerdown', function (e) {
 
 canvas.addEventListener('pointermove', function (e) {
   var px = e.clientX, py = e.clientY;
+
+  if (orbit) {
+    var dx = px - orbit.x, dy = py - orbit.y;
+    orbit.moved = Math.max(orbit.moved, Math.abs(dx) + Math.abs(dy));
+    P.camYaw = ((orbit.yaw + dx * 0.4 + 180) % 360 + 360) % 360 - 180;
+    P.camPitch = clamp(orbit.pitch + dy * 0.3, -85, 85);
+    syncCtrl('camYaw'); syncCtrl('camPitch');
+    invalidate('lines');
+    return;
+  }
 
   if (drag) {
     var nd = nodes[drag.i];
@@ -2544,7 +3840,8 @@ canvas.addEventListener('pointermove', function (e) {
       hoverH = sampleH(mx, my);
       var g = gradH(mx, my);
       hoverS = Math.sqrt(g[0] * g[0] + g[1] * g[1]);
-    } else { hoverH = null; hoverS = null; }
+      midiUpdate(mx, my, hoverH, hoverS);
+    } else { hoverH = null; hoverS = null; midiAllOff(); }
     status();
   }
 
@@ -2554,6 +3851,23 @@ canvas.addEventListener('pointermove', function (e) {
 });
 
 function endDrag(e) {
+  if (orbit) {
+    /* it never really moved: it was a shift+click after all */
+    if (orbit.moved < 4) {
+      nodes.push({ x: orbit.x / H, y: orbit.y / H, a: -Math.abs(P.nodeAmp),
+                   r: P.nodeRadius, k: P.nodeKernel });
+      selected = nodes.length - 1;
+      syncNodeUI();
+      orbit = null; orbiting = false;
+      canvas.classList.remove('grabbing');
+      invalidate('field');
+      return;
+    }
+    orbit = null; orbiting = false;
+    canvas.classList.remove('grabbing');
+    invalidate('lines');
+    return;
+  }
   if (!drag) return;
   drag = null;
   canvas.classList.remove('grabbing');
@@ -2561,8 +3875,20 @@ function endDrag(e) {
 }
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('pointerleave', function () {
+  hoverH = null; hoverS = null;
+  midiAllOff();
+  status();
+});
 
 canvas.addEventListener('wheel', function (e) {
+  if (e.shiftKey && P.mode === 1 && P.p3d) {
+    e.preventDefault();
+    P.camZoom = clamp(P.camZoom * (1 - Math.sign(e.deltaY) * 0.07), 0.3, 2.5);
+    syncCtrl('camZoom');
+    invalidate('lines');
+    return;
+  }
   if (!P.showNodes) return;
   var hit = hitTest(e.clientX, e.clientY);
   if (!hit) return;
@@ -2600,6 +3926,13 @@ window.addEventListener('keydown', function (e) {
   else if (k >= '1' && k <= '4') { P.mode = +k - 1; syncModeUI(); invalidate('lines'); }
   else if (k === 'm') { P.meshMode = !P.meshMode; setToggle('btn-mesh', P.meshMode); invalidate('lines'); }
   else if (k === 's') { P.seaFill = !P.seaFill; setToggle('btn-seafill', P.seaFill); invalidate('lines'); }
+  else if (k === 'b') { P.p3d = !P.p3d; setToggle('btn-p3d', P.p3d); invalidate('lines'); }
+  else if (k === 'v') { P.veg = !P.veg; setToggle('btn-veg', P.veg); invalidate('lines'); }
+  else if (k === 'x') {
+    P.linework = (P.linework + 1) % 5;
+    document.getElementById('linework').value = String(P.linework);
+    invalidate('lines');
+  }
   else if (k === 'escape') { selected = -1; syncNodeUI(); draw(); }
   else if (k === 'delete' || k === 'backspace') {
     if (selected >= 0) { nodes.splice(selected, 1); selected = -1; syncNodeUI(); invalidate('field'); }
@@ -2685,7 +4018,7 @@ function exportSVG() {
   out.push('<g fill="none" stroke-linecap="round" stroke-linejoin="round">');
 
   for (var i = 0; i < lines.length; i++) {
-    var L = lines[i], pts = L.pts, n = pts.length, k;
+    var L = lines[i], pts = L.pts, n = pts ? pts.length : 0, k;
 
     if (L.seaFill) {
       var sd = 'M0 0H' + Math.round(W) + 'V' + Math.round(H) + 'H0Z';
@@ -2700,9 +4033,27 @@ function exportSVG() {
       continue;
     }
 
+    if (L.marks) {
+      var mk = L.marks, md = '';
+      for (var z = 0; z + 3 < mk.length; z += 4) {
+        md += 'M' + mk[z].toFixed(2) + ' ' + mk[z + 1].toFixed(2) +
+              'L' + mk[z + 2].toFixed(2) + ' ' + mk[z + 3].toFixed(2);
+      }
+      if (md) out.push('<path d="' + md + '" ' + svgPaint(L.c, 'stroke') +
+                       ' stroke-width="' + L.w.toFixed(2) + '"/>');
+      continue;
+    }
+
     if (n < 4) continue;
     var d = 'M' + pts[0].toFixed(2) + ' ' + pts[1].toFixed(2);
     for (k = 2; k < n; k += 2) d += 'L' + pts[k].toFixed(2) + ' ' + pts[k + 1].toFixed(2);
+
+    if (L.fillPoly) {
+      out.push('<path d="' + d + 'Z" ' + svgPaint(L.fill, 'fill') +
+               (L.w > 0 ? ' ' + svgPaint(L.c, 'stroke') + ' stroke-width="' + L.w.toFixed(2) + '"'
+                        : ' stroke="none"') + '/>');
+      continue;
+    }
 
     if (L.fill) {
       var fd = d + 'L' + pts[n - 2].toFixed(2) + ' ' + L.fillBase.toFixed(2) +
