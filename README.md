@@ -26,7 +26,9 @@ Every point of the stack — the sections, the mesh rungs, the beds of the block
 placed by one projection, so the whole thing stays welded together however it is moved.
 
 - **cross wires** turns the stack into a square wire mesh, hidden by the same floating
-  horizon the sections use. *square cells* spaces the rungs to match the rows on screen.
+  horizon the sections use. *square cells* spaces the rungs to match the rows on screen,
+  and *triangles* runs a diagonal through every cell so the ground reads as a triangulated
+  surface rather than a grid.
 - **plate shape** — width, convergence of the far rows, how the depth is eased, plus a
   turn and a zoom that decide which ground the sections are cut through and at what angle.
 - **strata** cuts the front of the plate away and draws the ground under it as beds.
@@ -60,6 +62,31 @@ how far off it is, and the whole lot is painted back to front:
   an oblique view should give.
 - the walls are cut into chunks across as well as along, the more the block has been swung
   round, so a wall seen nearly edge-on still interleaves correctly with the ground over it.
+- everything that lies on a piece of ground — its rungs, the cover standing on it, the rows
+  along its edges — is filed at exactly that piece's depth, so it is painted straight after
+  the fill it stands on and never underneath it. The hatching is likewise laid out on one
+  lattice belonging to the whole wall and only then cut to the chunk, so a wall split into
+  sixty pieces is ruled exactly as densely as one drawn whole.
+
+## Taking the plan view off the page
+
+Contour, flow and hachure are drawn flat and can then be moved somewhere else. Both
+projections turn on the same camera as the block, so **shift+drag** orbits them and
+**shift+wheel** pulls the camera in.
+
+- **globe** wraps the sheet round a sphere and draws the near half, cutting every line at
+  the limb. *wrap* decides how much of the world the sheet covers, *relief bulge* lifts the
+  land off the surface, and the **graticule** draws meridians and parallels on the sphere
+  itself rather than on the ground, so the net stays clean whatever the relief does. With
+  the sea filled, the water is the disc of the planet with the land cut back out of it.
+- **relief** lays the same drawing on the ground it describes. The ground is rasterised
+  once into a small depth buffer and every point of the drawing is asked whether anything
+  stands between it and the camera — so a contour behind a ridge goes behind the ridge, and
+  a line nothing hides stays whole. Sorting cannot answer that one: a contour wanders all
+  over the plate, and cutting it small enough to sort makes tens of thousands of pieces and
+  is still only approximately right. With **opaque ground** on, the ribbons under the drawing
+  are painted in, and a ribbon under the waterline takes the sea's colour, which is what
+  makes a drowned coast read without a separate sea to cut out.
 
 ## Line work
 
@@ -124,7 +151,8 @@ drag its ring to resize, wheel over it to change height, alt+click to delete.
 | `B` | 3d block |
 | `V` | vegetation |
 | `X` | cycle line work |
-| `shift+drag` | turn the 3d block |
+| `P` | projection — sheet, globe, relief |
+| `shift+drag` | turn the block, the globe or the drape |
 | `shift+wheel` | camera zoom |
 | `D` | drift |
 | `space` | re-render |
