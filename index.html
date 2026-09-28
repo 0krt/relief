@@ -142,6 +142,17 @@
     border: 1px solid var(--line-strong); border-radius: 2px; padding: 0 3px;
   }
 
+  .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 8px; margin-bottom: 12px; }
+  .swatches label {
+    display: flex; flex-direction: column; gap: 3px; font-size: 8.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  input[type="color"] {
+    width: 100%; height: 24px; padding: 0 2px; border: 1px solid var(--control-border);
+    border-radius: 3px; background: #0d0f13; cursor: pointer;
+  }
+  .ramppreview { height: 10px; border-radius: 2px; margin: -4px 0 12px; border: 1px solid var(--line-strong); }
+
   .seedrow { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; }
   .seedrow input[type="number"] { margin-bottom: 0; flex: 1; cursor: text; }
   input[type="text"] { cursor: text; }
@@ -267,6 +278,31 @@
       <option value="1" selected>elevation</option>
       <option value="2">slope</option>
     </select>
+    <div class="sublabel">ramp</div>
+    <select aria-label="Colour ramp" id="ramp">
+      <option value="0" selected>palette</option>
+      <option value="1">false colour — turbo</option>
+      <option value="2">false colour — spectral</option>
+      <option value="3">false colour — viridis</option>
+      <option value="4">false colour — hypsometric</option>
+      <option value="5">false colour — thermal</option>
+      <option value="6">false colour — rainbow</option>
+      <option value="7">false colour — ice</option>
+    </select>
+    <div class="ramppreview" id="ramppreview" aria-hidden="true"></div>
+    <div class="toolrow">
+      <button class="tool" id="btn-rampinv">invert ramp</button>
+      <button class="tool" id="btn-tint">false colour fill</button>
+    </div>
+    <div id="params-ramp"></div>
+    <div class="sublabel">colours</div>
+    <div class="swatches" id="swatches"></div>
+    <div class="hint" style="margin-bottom:12px">
+      picking any colour turns the palette into <b>custom</b>, starting from the one you were on.
+      the <b>ramp</b> swaps the palette's four stops for a false-colour scale; <b>colour bands</b>
+      steps it into flat classes, and <b>ramp low / high</b> decide which part of the ground the
+      scale is spread across. <b>false colour fill</b> paints the ground itself with the ramp, under the lines.
+    </div>
     <div id="params-style"></div>
     <div class="toolrow">
       <button class="tool" id="btn-seafill">fill sea</button>
@@ -436,6 +472,50 @@
     </div>
   </div>
 
+  <div class="section">
+    <h2>Characters <span class="tag" id="glyph-tag"></span></h2>
+    <select aria-label="Character rendering" id="glyphmode">
+      <option value="0" selected>off — lines</option>
+      <option value="1">along the lines</option>
+      <option value="2">character grid</option>
+    </select>
+    <div class="sublabel">character set</div>
+    <select aria-label="Character set" id="glyphset"></select>
+    <input type="text" id="glyphcustom" aria-label="Custom character set" placeholder="custom set, light to dark" autocomplete="off" spellcheck="false">
+    <div class="toolrow">
+      <button class="tool" id="btn-glyphspell">spell in order</button>
+      <button class="tool active" id="btn-glyphturn">follow line</button>
+    </div>
+    <div id="params-glyph"></div>
+    <div class="hint">
+      <b>along the lines</b> sets characters on the drawing instead of marks — which one is chosen
+      by the tone of the line, so with digits a contour reads out its own height, or with
+      <b>spell in order</b> the set is written along it. <b>character grid</b> renders the whole
+      picture, fills and all, through a grid of cells, each taking the character whose ink matches
+      the ink under it and the colour of that ink. the set runs light to dark.
+    </div>
+
+    <div class="sublabel" style="margin-top:14px">elevation overlay</div>
+    <div class="toolrow">
+      <button class="tool" id="btn-elev">elevation 0–9</button>
+      <button class="tool active" id="btn-elevland">land only</button>
+      <button class="tool active" id="btn-elevsea">from sea level</button>
+    </div>
+    <div class="sublabel">digit colour</div>
+    <select aria-label="Digit colour" id="elevink">
+      <option value="0" selected>ramp — by height</option>
+      <option value="1">ink</option>
+      <option value="2">contrast — black or white</option>
+    </select>
+    <div id="params-elev"></div>
+    <div class="hint">
+      the height at points across the ground, as a digit: <b>range low</b> is 0 and <b>range high</b>
+      is 9, with the ground in between split evenly. <b>from sea level</b> measures the range over the
+      land, so 0 is the coast and 1 the highest ground; off, it is the whole field from the deepest sea. it sits on the plate in every view and is hidden
+      by what stands in front of it.
+    </div>
+  </div>
+
   <div class="section" id="block-veg">
     <h2>Vegetation <span class="tag" id="veg-tag"></span></h2>
     <div class="toolrow">
@@ -538,6 +618,7 @@
       <kbd>1</kbd>–<kbd>4</kbd> line mode &nbsp; <kbd>D</kbd> drift &nbsp; <kbd>M</kbd> wire mesh<br>
       <kbd>S</kbd> fill sea &nbsp; <kbd>B</kbd> 3d block &nbsp; <kbd>V</kbd> vegetation<br>
       <kbd>X</kbd> line work &nbsp; <kbd>P</kbd> projection &nbsp; <kbd>space</kbd> re-render<br>
+      <kbd>G</kbd> characters &nbsp; <kbd>E</kbd> elevation digits &nbsp; <kbd>F</kbd> false colour fill<br>
       <kbd>shift+drag</kbd> orbit the block, the globe or the drape<br>
       <kbd>del</kbd> delete selected node &nbsp; <kbd>esc</kbd> deselect
     </div>
@@ -631,6 +712,15 @@ var P = {
   weight: 0.8, weightVar: 0.4, wobble: 0.7, wobbleScale: 0.18, wobbleDrift: 0.45,
   opacity: 0.92, seaFill: false, seaFillAlpha: 1,
 
+  ramp: 0, rampInvert: false, rampSteps: 0, rampLo: 0, rampHi: 1, rampGamma: 1,
+  tint: false, tintAlpha: 0.85,
+  cBg: '#061520', cFlat: '#7fd4f5', cS0: '#10405e', cS1: '#2f7fa8', cS2: '#7fd4f5', cS3: '#e8fbff',
+  cSea: '#0d2a3d', cNode: '#ffcf5c',
+
+  glyphMode: 0, glyphSet: 0, glyphCustom: 'RELIEF', glyphSpell: false, glyphTurn: true,
+  glyphSize: 11, glyphSpacing: 1.1, glyphCell: 10, glyphGain: 1.6,
+  elev: false, elevLand: true, elevInk: 0, elevSea: true, elevLo: 0, elevHi: 1, elevStep: 34, elevSize: 11, elevJitter: 0.3,
+
   rivers: false, riverThresh: 0.55, riverWeight: 1.4,
   paths: false, pathCount: 2, pathGrade: 0.55, pathWeight: 1.4, pathDash: 5,
 
@@ -696,6 +786,24 @@ var SPECS = [
   { id: 'wobbleDrift', grp: 'style', label: 'hand drift',   min: 0, max: 1,   step: 0.01, d: 2, dirty: 'lines' },
   { id: 'seaFillAlpha', grp: 'style', label: 'sea opacity', min: 0.1, max: 1, step: 0.01, d: 2, dirty: 'lines' },
   { id: 'opacity',     grp: 'style', label: 'ink opacity',   min: 0.1, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+
+  /* --- colour ramp -------------------------------------------------- */
+  { id: 'rampSteps', grp: 'ramp', label: 'colour bands', min: 0, max: 24, step: 1, d: 0, dirty: 'lines' },
+  { id: 'rampLo',    grp: 'ramp', label: 'ramp low',     min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'rampHi',    grp: 'ramp', label: 'ramp high',    min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'rampGamma', grp: 'ramp', label: 'ramp gamma',   min: 0.25, max: 4, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'tintAlpha', grp: 'ramp', label: 'fill opacity', min: 0.05, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+
+  /* --- characters ---------------------------------------------------- */
+  { id: 'glyphSize',    grp: 'glyph', label: 'character size', min: 5, max: 40, step: 0.5, d: 1, dirty: 'lines' },
+  { id: 'glyphSpacing', grp: 'glyph', label: 'spacing',        min: 0.5, max: 4, step: 0.05, d: 2, dirty: 'lines' },
+  { id: 'glyphCell',    grp: 'glyph', label: 'grid cell',      min: 4, max: 40, step: 1, d: 0, dirty: 'lines' },
+  { id: 'glyphGain',    grp: 'glyph', label: 'ink gain',       min: 0.3, max: 6, step: 0.05, d: 2, dirty: 'lines' },
+  { id: 'elevLo',     grp: 'elev', label: 'range low',   min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'elevHi',     grp: 'elev', label: 'range high',  min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
+  { id: 'elevStep',   grp: 'elev', label: 'spacing',     min: 10, max: 120, step: 1, d: 0, dirty: 'lines' },
+  { id: 'elevSize',   grp: 'elev', label: 'digit size',  min: 6, max: 32, step: 0.5, d: 1, dirty: 'lines' },
+  { id: 'elevJitter', grp: 'elev', label: 'scatter',     min: 0, max: 1, step: 0.01, d: 2, dirty: 'lines' },
 
   /* --- contour ------------------------------------------------------ */
   { id: 'levels',      grp: 'contour', label: 'contour count', min: 3, max: 90, step: 1, d: 0, dirty: 'lines' },
@@ -821,29 +929,96 @@ var PALETTES = [
     stops: ['#6f5f4b', '#443a2d', '#211d17', '#000000'], sea: '#ae9375', node: '#ef5b1d' }
 ];
 
+/* the false-colour scales.  each one swaps the palette's four stops for a
+   ramp of its own, so the ground reads by hue rather than by tone. */
+var RAMPS = [
+  null,
+  ['#30123b', '#4662d7', '#36aaf9', '#1ae4b6', '#72fe5e', '#c7ef34', '#fbb938', '#f56918', '#c92903', '#7a0403'],
+  ['#5e4fa2', '#3288bd', '#66c2a5', '#abdda4', '#e6f598', '#fee08b', '#fdae61', '#f46d43', '#d53e4f', '#9e0142'],
+  ['#440154', '#482878', '#3e4989', '#31688e', '#26828e', '#1f9e89', '#35b779', '#6ece58', '#b5de2b', '#fde725'],
+  ['#2b6b3f', '#5a9a4a', '#a8c46a', '#e8dc8c', '#d7a45c', '#a86a3a', '#7d4b2e', '#b8a89a', '#ffffff'],
+  ['#000004', '#2b0a55', '#6a176e', '#a52c60', '#dd513a', '#f98e09', '#f6d746', '#fcffa4'],
+  ['#8000ff', '#3050ff', '#00b4ff', '#00e0a0', '#40f040', '#e0f000', '#ffa000', '#ff3000', '#ff0060'],
+  ['#08081e', '#1b2a5c', '#2c5d9a', '#4f97c9', '#8bc9e6', '#cdeef7', '#ffffff']
+];
+var RAMP_NAMES = ['palette', 'turbo', 'spectral', 'viridis', 'hypsometric', 'thermal', 'rainbow', 'ice'];
+
+var hexCache = {};
 function hex2rgb(h) {
-  return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  var c = hexCache[h];
+  if (c) return c;
+  c = [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  hexCache[h] = c;
+  return c;
+}
+function rgb2hex(c) {
+  return '#' + [0, 1, 2].map(function (i) { return ('0' + (clamp(Math.round(c[i]), 0, 255)).toString(16)).slice(-2); }).join('');
+}
+
+/* where on the ramp a tone lands, after the range, the gamma, the direction
+   and the banding have all had their say */
+function rampT(t) {
+  var lo = P.rampLo, hi = P.rampHi;
+  if (hi - lo < 0.001 && hi - lo > -0.001) hi = lo + 0.001;
+  t = clamp((t - lo) / (hi - lo), 0, 1);
+  if (P.rampGamma !== 1) t = Math.pow(t, P.rampGamma);
+  if (P.rampInvert) t = 1 - t;
+  var n = P.rampSteps | 0;
+  if (n > 1) t = Math.min(n - 1, Math.floor(t * n)) / (n - 1);
+  return t;
+}
+var rgbOut = [0, 0, 0];
+function rampRGB(t) {
+  var s = RAMPS[P.ramp | 0] || pal().stops, n = s.length - 1;
+  var x = rampT(t) * n, i = Math.min(n - 1, Math.floor(x)), f = x - i;
+  var a = hex2rgb(s[i]), b = hex2rgb(s[i + 1]);
+  rgbOut[0] = Math.round(lerp(a[0], b[0], f));
+  rgbOut[1] = Math.round(lerp(a[1], b[1], f));
+  rgbOut[2] = Math.round(lerp(a[2], b[2], f));
+  return rgbOut;
 }
 function rampColor(pal, t, alpha) {
-  var s = pal.stops, n = s.length - 1;
-  var x = clamp(t, 0, 1) * n, i = Math.min(n - 1, Math.floor(x)), f = x - i;
-  var a = hex2rgb(s[i]), b = hex2rgb(s[i + 1]);
-  var r = Math.round(lerp(a[0], b[0], f)), g = Math.round(lerp(a[1], b[1], f)), bl = Math.round(lerp(a[2], b[2], f));
-  return 'rgba(' + r + ',' + g + ',' + bl + ',' + alpha.toFixed(3) + ')';
+  var c = rampRGB(t);
+  return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + alpha.toFixed(3) + ')';
 }
 /* the two named colours a palette carries besides the ramp */
 function seaColor(alpha) {
-  var c = hex2rgb(PALETTES[P.palette].sea);
+  var c = hex2rgb(pal().sea);
   return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + alpha.toFixed(3) + ')';
 }
 function nodeColor(alpha) {
-  var c = hex2rgb(PALETTES[P.palette].node);
+  var c = hex2rgb(pal().node);
   return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + alpha.toFixed(3) + ')';
 }
 function flatColor(pal, alpha) {
   var c = hex2rgb(pal.flat);
   return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + alpha.toFixed(3) + ')';
 }
+
+/* the palette after the last built-in one is the sheet's own, made of the
+   colours picked by hand */
+var CUSTOM = PALETTES.length;
+var customPal = { name: 'custom', bg: '', light: false, flat: '', stops: [], sea: '', node: '' };
+function pal() {
+  if (P.palette !== CUSTOM) return PALETTES[P.palette] || PALETTES[0];
+  var c = customPal;
+  c.bg = P.cBg; c.flat = P.cFlat; c.sea = P.cSea; c.node = P.cNode;
+  c.stops = [P.cS0, P.cS1, P.cS2, P.cS3];
+  var b = hex2rgb(P.cBg);
+  c.light = (0.2126 * b[0] + 0.7152 * b[1] + 0.0722 * b[2]) > 140;
+  return c;
+}
+/* the keys the pickers edit, and where each one lives on a palette */
+var SWATCHES = [
+  { key: 'cBg',   label: 'page',  get: function (p) { return p.bg; } },
+  { key: 'cFlat', label: 'ink',   get: function (p) { return p.flat; } },
+  { key: 'cSea',  label: 'sea',   get: function (p) { return p.sea; } },
+  { key: 'cNode', label: 'nodes', get: function (p) { return p.node; } },
+  { key: 'cS0',   label: 'low',   get: function (p) { return p.stops[0]; } },
+  { key: 'cS1',   label: 'lower', get: function (p) { return p.stops[1]; } },
+  { key: 'cS2',   label: 'upper', get: function (p) { return p.stops[2]; } },
+  { key: 'cS3',   label: 'high',  get: function (p) { return p.stops[3]; } }
+];
 
 /* ==================================================================
    3.  the field
@@ -1252,7 +1427,109 @@ function styleWeight(t) {
 function styleColor(t) {
   return P.colormode === 0 ? flatColor(pal(), P.opacity) : rampColor(pal(), t, P.opacity);
 }
-function pal() { return PALETTES[P.palette]; }
+
+/* ------------------------------------------------------------------
+   false colour fill.  the ground itself painted with the ramp, under the
+   lines.  the colour is mixed onto the page rather than laid over it with an
+   alpha, so wherever the fill has to hide what stands behind it - on the block,
+   on the drape - it still does.
+   ------------------------------------------------------------------ */
+function tintTone(h, mx, my) {
+  if (P.colormode === 2 && mx !== undefined) {
+    var g = gradH(mx, my);
+    return clamp(Math.sqrt(g[0] * g[0] + g[1] * g[1]) / 6, 0, 1);
+  }
+  /* contours are toned by their raw level, everything else by height over the sea */
+  if (P.mode === 0) return clamp(h, 0, 1);
+  return clamp((h - P.sea) / Math.max(0.001, 1 - P.sea), 0, 1);
+}
+var TINT_Q = 96;
+var tintOut = [0, 0, 0];
+function tintRGB(t) {
+  var c = rampRGB(t), b = hex2rgb(pal().bg), a = P.tintAlpha;
+  tintOut[0] = Math.round(lerp(b[0], c[0], a));
+  tintOut[1] = Math.round(lerp(b[1], c[1], a));
+  tintOut[2] = Math.round(lerp(b[2], c[2], a));
+  return tintOut;
+}
+function tintColor(t) {
+  var c = tintRGB(t);
+  return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+}
+/* a run of fill, edged in its own colour so neighbouring runs close up
+   without a hairline of page showing between them */
+function tintPoly(poly, t, col) {
+  var c = col || tintColor(t);
+  return { pts: poly, closed: true, fillPoly: true, fill: c, c: c, w: 0.7 };
+}
+
+/* a strip of cells between two rows of points, cut into runs of one colour
+   each.  n cells, n + 1 points a side; T holds a tone per cell and V, when
+   given, whether the cell is drawn at all.  emit gets the outline of a run. */
+function tintRuns(TX, TY, BX, BY, T, V, n, emit) {
+  var i = 0;
+  while (i < n) {
+    if (V && !V[i]) { i++; continue; }
+    var key = Math.round(T[i] * TINT_Q), j = i + 1, sum = T[i];
+    while (j < n && (!V || V[j]) && Math.round(T[j] * TINT_Q) === key) { sum += T[j]; j++; }
+    var poly = [], k;
+    for (k = i; k <= j; k++) poly.push(TX[k], TY[k]);
+    for (k = j; k >= i; k--) poly.push(BX[k], BY[k]);
+    emit(poly, key / TINT_Q, i, j);
+    i = j;
+  }
+}
+
+/* on the flat sheet the fill is simply the grid, one pixel a cell, stretched
+   over the page */
+function genTintRaster() {
+  var cv = document.createElement('canvas');
+  cv.width = gw; cv.height = gh;
+  var g = cv.getContext('2d'), img = g.createImageData(gw, gh), d = img.data;
+  for (var j = 0; j < gh; j++) {
+    for (var i = 0; i < gw; i++) {
+      var idx = j * gw + i, mx = i / (gw - 1) * aspect, my = j / (gh - 1);
+      var c = tintRGB(tintTone(field[idx], mx, my)), o = idx * 4;
+      d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  /* grid points sit on the pixel centres, so the image hangs half a cell over each edge */
+  var cx = aspect * H / (gw - 1), cy = H / (gh - 1);
+  return { raster: cv, x: -cx * 0.5, y: -cy * 0.5, rw: cx * gw, rh: cy * gh };
+}
+
+/* on the globe it is a coarse net of cells, each dropped whole once any of
+   its corners turns round the back */
+function globeTint(out) {
+  var CX = 120, CY = 60, i, j, pp;
+  var PX = new Float64Array((CX + 1) * (CY + 1)), PY = new Float64Array(PX.length), PZ = new Float64Array(PX.length);
+  for (j = 0; j <= CY; j++) {
+    for (i = 0; i <= CX; i++) {
+      pp = globePoint(i / CX * aspect, j / CY, 1);
+      var k = j * (CX + 1) + i;
+      PX[k] = pp[0]; PY[k] = pp[1]; PZ[k] = pp[2];
+    }
+  }
+  var pieces = [];
+  for (j = 0; j < CY; j++) {
+    var a = j * (CX + 1), b = a + CX + 1;
+    var TX = PX.subarray(a, a + CX + 1), TY = PY.subarray(a, a + CX + 1);
+    var BX = PX.subarray(b, b + CX + 1), BY = PY.subarray(b, b + CX + 1);
+    var T = new Float64Array(CX), V = new Uint8Array(CX);
+    for (i = 0; i < CX; i++) {
+      V[i] = PZ[a + i] > 0 && PZ[a + i + 1] > 0 && PZ[b + i] > 0 && PZ[b + i + 1] > 0 ? 1 : 0;
+      var mx = (i + 0.5) / CX * aspect, my = (j + 0.5) / CY;
+      T[i] = tintTone(sampleH(mx, my), mx, my);
+    }
+    tintRuns(TX, TY, BX, BY, T, V, CX, function (poly, t, i0, i1) {
+      var z = (PZ[a + i0] + PZ[a + i1] + PZ[b + i0] + PZ[b + i1]) * 0.25;
+      pieces.push({ z: z, it: tintPoly(poly, t) });
+    });
+  }
+  pieces.sort(function (p1, p2) { return p1.z - p2.z; });
+  for (i = 0; i < pieces.length; i++) out.push(pieces[i].it);
+}
 
 function genContours() {
   var out = [], i;
@@ -1262,7 +1539,7 @@ function genContours() {
     var bn = P.bathyLevels | 0;
     for (i = 0; i < bn; i++) {
       var lv = sea * (i + 0.5) / bn;
-      pushIso(out, lv, styleWeight(lv) * 0.55, rampColor(pal(), lv * 0.5, P.opacity * 0.55));
+      pushIso(out, lv, styleWeight(lv) * 0.55, rampColor(pal(), lv * 0.5, P.opacity * 0.55), lv * 0.5);
     }
   }
   for (i = 0; i < n; i++) {
@@ -1270,21 +1547,21 @@ function genContours() {
     var level = lerp(sea, 1, t);
     var isIndex = P.indexEvery > 0 && (i % (P.indexEvery | 0)) === (P.indexEvery | 0) - 1;
     var w = styleWeight(level) * (isIndex ? P.indexWeight : 1);
-    pushIso(out, level, w, styleColor(level));
+    pushIso(out, level, w, styleColor(level), level);
   }
   if (P.coast && sea > 0.005) {
-    pushIso(out, sea, P.weight * P.coastWeight, styleColor(sea * 0.85));
+    pushIso(out, sea, P.weight * P.coastWeight, styleColor(sea * 0.85), sea);
   }
   return out;
 }
 
-function pushIso(out, level, w, colour) {
+function pushIso(out, level, w, colour, t) {
   var polys = stitch(isoSegments(level));
   for (var i = 0; i < polys.length; i++) {
     var pts = polys[i].pts;
     if (pts.length < 6) continue;
     if (P.smoothLines) { pts = chaikin(pts, polys[i].closed); pts = chaikin(pts, polys[i].closed); }
-    out.push({ pts: pts, w: w, c: colour, closed: polys[i].closed, fill: null });
+    out.push({ pts: pts, w: w, c: colour, closed: polys[i].closed, fill: null, t: t });
   }
 }
 
@@ -1449,7 +1726,15 @@ function genProfiles() {
 
   var mcols = meshColumns(rows);
   var circ = (P.blockShape | 0) === 1;
-  var vegOut = [];
+  var vegOut = [], tintOut2 = [], elevOut = [];
+  /* the digits sit on every so many rows and columns, spaced to the overlay's spacing on screen */
+  var eRow = Math.max(1, Math.round(P.elevStep / Math.max(1, PJ.depth / Math.max(1, rows - 1))));
+  var eCol = Math.max(1, Math.round(P.elevStep / Math.max(0.5, W / cols)));
+  var FX = null, FY = null, FB = null, FT = null;
+  if (P.tint) {
+    FX = new Float64Array(cols + 1); FY = new Float64Array(cols + 1);
+    FB = new Float64Array(cols + 1); FT = new Float64Array(cols);
+  }
 
   function seen(x, y) {
     var b = clamp(Math.round(x), 0, horizon.length - 1);
@@ -1460,13 +1745,20 @@ function genProfiles() {
     var v = rows === 1 ? 0.5 : r / (rows - 1);
     if (circ) v = lerp(0.015, 0.985, v);
     var sp = plateSpan(v), u0 = sp[0], u1 = sp[1];
-    var run = null, runs = [];
+    var run = null, runs = [], rowLab = [];
 
     for (i = 0; i <= cols; i++) {
       var u = lerp(u0, u1, i / cols);
       var h = plateHeight(u, v);
       var pp = plateProject(u, v, h);
       var x = pp[0], y = pp[1];
+      if (FX) {
+        FX[i] = x; FY[i] = y; FB[i] = y;
+        if (i < cols) {
+          var tm = P.colormode === 2 ? plateMap(lerp(u0, u1, (i + 0.5) / cols), v) : null;
+          FT[i] = tm ? tintTone(h, tm[0], tm[1]) : tintTone(h);
+        }
+      }
 
       var vis = true;
       if (occl === 1) {
@@ -1478,12 +1770,20 @@ function genProfiles() {
         if (y < horizon[b2]) horizon[b2] = y;
       }
       if (x < -50 || x > W + 50) vis = false;
+      if (P.elev && r % eRow === 0 && i % eCol === Math.floor(eCol / 2) && elevShown(h) &&
+          (vis || occl === 0) && x >= 0 && x <= W) {
+        rowLab.push(elevLabel(x, y - P.elevSize * 0.6, elevDigit(h), h));
+      }
 
       if (vis) {
         if (!run) { run = { pts: [], hSum: 0, n: 0 }; runs.push(run); }
         run.pts.push(x, y); run.hSum += h; run.n++;
       } else run = null;
     }
+
+    /* painted solid, a row's digits go down with it, under whatever stands in
+       front; hidden-line, they were only kept where the row was seen, and go on top */
+    for (i = 0; i < rowLab.length; i++) (occl === 0 ? out : elevOut).push(rowLab[i]);
 
     /* each visible run is tinted by the ground it actually crosses, so a
        shoulder that clears a nearer ridge comes up bright while the flats stay
@@ -1494,8 +1794,24 @@ function genProfiles() {
       var t = clamp((rr.hSum / rr.n - P.sea) / span, 0, 1);
       out.push({
         pts: rr.pts, w: styleWeight(t), c: styleColor(t), closed: false, t: t,
-        fill: occl === 0 ? pal().bg : null,
+        fill: occl === 0 && !FX ? pal().bg : null,
         fillBase: plateBase(v) + H
+      });
+    }
+
+    /* the false colour hangs from the row as a skirt down to the base of the
+       row in front, which paints over whatever of it that row stands before.
+       painting back to front then leaves each strip of ground its own colour. */
+    if (FX) {
+      var vn = rows === 1 ? v : Math.min(1, v + 1 / (rows - 1));
+      if (circ) vn = Math.min(0.985, vn);
+      for (i = 0; i <= cols; i++) {
+        var pb = plateProject(lerp(u0, u1, i / cols), vn, P.sea);
+        FB[i] = Math.max(pb[1], FY[i]);
+      }
+      var sink = occl === 0 ? out : tintOut2;
+      tintRuns(FX, FY, FX, FB, FT, null, cols, function (poly, tt) {
+        sink.push(tintPoly(poly, tt));
       });
     }
 
@@ -1510,8 +1826,10 @@ function genProfiles() {
   /* solid mode paints, so it has to go back to front - the reverse of the
      order the horizon buffer wants */
   if (occl === 0) out.reverse();
+  else if (tintOut2.length) out = tintOut2.reverse().concat(out);
   for (i = 0; i < vegOut.length; i++) out.push(vegOut[i]);
   if (P.strata) genStrata(out, cols);
+  for (i = 0; i < elevOut.length; i++) out.push(elevOut[i]);
   return out;
 }
 
@@ -2070,6 +2388,8 @@ function genPlateSolid() {
   }
   /* which ribbon piece a point at this fraction across the plate lies on */
   function chunkOf(uFrac) { return clamp(Math.floor(uFrac * UC), 0, UC - 1); }
+  var eRow = Math.max(1, Math.round(P.elevStep / Math.max(1, PJ.depth * C3.zoom / Math.max(1, R - 1))));
+  var eCol = Math.max(1, Math.round(P.elevStep / Math.max(0.5, PJ.plate * C3.zoom / Cn)));
 
   /* the rows themselves.  a row is the seam between two ribbons and belongs to
      whichever of them is nearer, so the one in front cannot clip it. */
@@ -2088,6 +2408,14 @@ function genPlateSolid() {
       var dq = 1e18;
       if (r > 0) dq = Math.min(dq, SD[r - 1][q]);
       if (r < R - 1) dq = Math.min(dq, SD[r][q]);
+      if (P.elev && r % eRow === 0) {
+        for (c = c0; c < c1; c++) {
+          if (c % eCol !== Math.floor(eCol / 2)) continue;
+          idx = r * stride + c;
+          if (!elevShown(GH[idx])) continue;
+          pieces.push({ d: dq, o: 3, it: elevLabel(GX[idx], GY[idx] - P.elevSize * 0.6, elevDigit(GH[idx]), GH[idx]) });
+        }
+      }
       for (i = 0; i < runs.length; i++) {
         if (runs[i].pts.length < 4) continue;
         var t = clamp((runs[i].hSum / runs[i].n - P.sea) / span, 0, 1);
@@ -2102,10 +2430,30 @@ function genPlateSolid() {
     for (q = 0; q < UC; q++) {
       var b0 = ck[q], b1 = ck[q + 1];
       if (b1 <= b0) continue;
-      var poly = [];
-      for (c = b0; c <= b1; c++) { idx = r * stride + c; poly.push(GX[idx], GY[idx]); }
-      for (c = b1; c >= b0; c--) { idx = (r + 1) * stride + c; poly.push(GX[idx], GY[idx]); }
-      if (bodyC) pieces.push({ d: SD[r][q], o: 0, it: { pts: poly, closed: true, fillPoly: true, fill: bodyC, w: 0 } });
+      if (P.tint) {
+        /* the same ribbon piece, cut again wherever its colour changes */
+        var a0 = r * stride, a1 = a0 + stride, nc = b1 - b0;
+        var TT = new Float64Array(nc);
+        for (c = b0; c < b1; c++) {
+          var hm = (GH[a0 + c] + GH[a0 + c + 1] + GH[a1 + c] + GH[a1 + c + 1]) * 0.25;
+          if (P.colormode === 2) {
+            var sq = plateSpan(VS[r]), tm = plateMap(lerp(sq[0], sq[1], (c + 0.5) / Cn), VS[r]);
+            TT[c - b0] = tintTone(hm, tm[0], tm[1]);
+          } else TT[c - b0] = tintTone(hm);
+        }
+        (function (dq2) {
+          tintRuns(GX.subarray(a0 + b0, a0 + b1 + 1), GY.subarray(a0 + b0, a0 + b1 + 1),
+                   GX.subarray(a1 + b0, a1 + b1 + 1), GY.subarray(a1 + b0, a1 + b1 + 1), TT, null, nc,
+            function (poly, tt) {
+              pieces.push({ d: dq2, o: 0, it: tintPoly(poly, tt) });
+            });
+        })(SD[r][q]);
+      } else if (bodyC) {
+        var poly = [];
+        for (c = b0; c <= b1; c++) { idx = r * stride + c; poly.push(GX[idx], GY[idx]); }
+        for (c = b1; c >= b0; c--) { idx = (r + 1) * stride + c; poly.push(GX[idx], GY[idx]); }
+        pieces.push({ d: SD[r][q], o: 0, it: { pts: poly, closed: true, fillPoly: true, fill: bodyC, w: 0 } });
+      }
     }
     if (P.meshMode) solidRungs(pieces, VS[r], VS[r + 1], mcols, span, SD[r], chunkOf);
     if (P.veg) plateVeg(null, r, VS[r], VS[r + 1], null, pieces, SD[r], chunkOf);
@@ -2329,6 +2677,7 @@ function globeGraticule(out) {
 function applyGlobe(ls) {
   globeSetup();
   var out = [], i, j;
+  if (P.tint) globeTint(out);
 
   /* the sea first: the disc of the planet, with the land cut back out of it.
      a coastline that runs round the back is closed along the limb, so the
@@ -2364,6 +2713,13 @@ function applyGlobe(ls) {
   if (P.globeGrid) globeGraticule(out);
 
   for (i = 0; i < ls.length; i++) {
+    if (ls[i].text) {
+      projectText(out, ls[i], function (x, y) {
+        var gp = globePoint(x / H, y / H, 1);
+        return gp[2] > 0 ? gp : null;
+      });
+      continue;
+    }
     if (ls[i].seaFill || ls[i].marks || !ls[i].pts) continue;
     globeLine(out, ls[i], 1);
   }
@@ -2471,7 +2827,30 @@ function applyRelief(ls) {
   /* the ground painted in, ribbon by ribbon, back to front.  a ribbon under
      the waterline takes the sea's colour instead of the page's, which is what
      makes a drowned coast read without a separate sea to cut out. */
-  if (P.reliefSolid) {
+  if (P.tint) {
+    /* false colour: every ribbon cut into runs of one colour, each sorted on
+       its own depth */
+    var seaT = seaColor(P.seaFillAlpha), tf = [];
+    var TT = new Float64Array(Cn), TW = new Uint8Array(Cn);
+    for (r = 0; r < R - 1; r++) {
+      var a0 = r * stride, a1 = a0 + stride;
+      for (c = 0; c < Cn; c++) {
+        var hm = (GH[a0 + c] + GH[a0 + c + 1] + GH[a1 + c] + GH[a1 + c + 1]) * 0.25;
+        var wetc = P.seaFill && hm <= P.sea + 0.0005;
+        TW[c] = wetc ? 1 : 0;
+        var mxc = (c + 0.5) / Cn * aspect, myc = (r + 0.5) / (R - 1);
+        TT[c] = wetc ? -1 : tintTone(hm, mxc, myc);
+      }
+      tintRuns(GX.subarray(a0, a0 + stride), GY.subarray(a0, a0 + stride),
+               GX.subarray(a1, a1 + stride), GY.subarray(a1, a1 + stride), TT, null, Cn,
+        function (poly, tt, i0, i1) {
+          var dd = (GD[a0 + i0] + GD[a0 + i1] + GD[a1 + i0] + GD[a1 + i1]) * 0.25;
+          tf.push({ d: dd, it: tintPoly(poly, tt, tt < 0 ? seaT : null) });
+        });
+    }
+    tf.sort(function (a, b) { return b.d - a.d; });
+    for (i = 0; i < tf.length; i++) out.push(tf[i].it);
+  } else if (P.reliefSolid) {
     var pageC = bodyFill(1), seaC = seaColor(P.seaFillAlpha);
     var fills = [];
     for (r = 0; r < R - 1; r++) {
@@ -2512,6 +2891,14 @@ function applyRelief(ls) {
 
   for (i = 0; i < ls.length; i++) {
     var L = ls[i];
+    if (L.text) {
+      projectText(out, L, function (x, y) {
+        var mx = clamp(x / H, 0, aspect), my = clamp(y / H, 0, 1);
+        var rp = reliefProject(mx, my, sampleH(mx, my));
+        return PJ.zdep <= zbAt(rp[0], rp[1]) + eps ? rp : null;
+      });
+      continue;
+    }
     if (L.seaFill || L.marks || !L.pts) continue;
     drape(L);
   }
@@ -2565,11 +2952,11 @@ function genFlow() {
         out.push({
           pts: pts.slice(a0, a1),
           w: base * lerp(1, lerp(0.35, 1.8, f), P.taper),
-          c: col, closed: false, fill: null
+          c: col, closed: false, fill: null, t: t
         });
       }
     } else {
-      out.push({ pts: pts, w: base, c: col, closed: false, fill: null });
+      out.push({ pts: pts, w: base, c: col, closed: false, fill: null, t: t });
     }
   }
   return out;
@@ -2601,7 +2988,7 @@ function genHachure() {
       out.push({
         pts: [px - dx * len * 0.5, py - dy * len * 0.5, px + dx * len * 0.5, py + dy * len * 0.5],
         w: P.weight * lerp(1, lerp(0.3, 2.0, slope), P.weightVar),
-        c: styleColor(t), closed: false, fill: null
+        c: styleColor(t), closed: false, fill: null, t: t
       });
     }
   }
@@ -3069,6 +3456,7 @@ function lwHash(x, y) {
 }
 
 function applyLinework(ls) {
+  if ((P.glyphMode | 0) === 1) return glyphLines(ls);
   var mode = P.linework | 0;
   if (!mode) return ls;
   var out = [];
@@ -3119,6 +3507,189 @@ function applyLinework(ls) {
   return out;
 }
 
+/* ==================================================================
+   5h.  characters.  a limited set of glyphs standing in for the ink: set
+   along the lines by their tone, or the whole picture read back through a
+   grid of cells, each one taking the character whose weight matches the
+   ink under it.  sets run light to dark.
+   ================================================================== */
+var GLYPH_SETS = [
+  { name: 'digits — 0 to 9',   s: '0123456789' },
+  { name: 'ascii ramp',         s: '.:-=+*#%@' },
+  { name: 'blocks',             s: '░▒▓█' },
+  { name: 'dots',               s: '·•●' },
+  { name: 'survey — 3 4 ▲ ●',   s: '·34◢▲●' },
+  { name: 'squares',            s: '·▫□▪■' },
+  { name: 'braille',            s: '⠁⠃⠇⡇⡧⡷⡿⣿' },
+  { name: 'binary — 0 1',       s: '01' },
+  { name: 'hex — 0 to F',       s: '0123456789ABCDEF' },
+  { name: 'custom',             s: null }
+];
+var GLYPH_FONT = 'ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace';
+
+function glyphChars() {
+  var g = GLYPH_SETS[P.glyphSet | 0] || GLYPH_SETS[0];
+  var s = g.s === null ? String(P.glyphCustom || '') : g.s;
+  var a = Array.from(s.replace(/\s+/g, ''));
+  return a.length ? a : ['#'];
+}
+
+/* one character per step of arc length, chosen by the tone of the line - or,
+   spelling, the set written out along it in order */
+function glyphLines(ls) {
+  var out = [], chars = glyphChars(), n = chars.length;
+  var fs = P.glyphSize, step = Math.max(2, fs * P.glyphSpacing);
+  for (var i = 0; i < ls.length; i++) {
+    var L = ls[i];
+    if (L.seaFill || L.fillPoly || L.fill || L.marks || L.text || !L.pts || L.pts.length < 4) {
+      out.push(L); continue;
+    }
+    var pts = L.pts;
+    if (L.closed) pts = pts.concat([pts[0], pts[1]]);
+    var t = L.t === undefined ? 0.5 : L.t;
+    var ci = Math.min(n - 1, Math.floor(clamp(t, 0, 1) * n));
+    var txt = [], str = [], carry = step * 0.5, count = 0;
+    for (var k = 0; k + 3 < pts.length; k += 2) {
+      var x0 = pts[k], y0 = pts[k + 1];
+      var dx = pts[k + 2] - x0, dy = pts[k + 3] - y0;
+      var len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 1e-6) continue;
+      var a = 0;
+      if (P.glyphTurn) {
+        a = Math.atan2(dy, dx);
+        /* keep the type the right way up */
+        if (a > Math.PI / 2) a -= Math.PI; else if (a < -Math.PI / 2) a += Math.PI;
+      }
+      var d = carry;
+      while (d < len) {
+        txt.push(x0 + dx / len * d, y0 + dy / len * d, a);
+        str.push(P.glyphSpell ? chars[count % n] : chars[ci]);
+        count++;
+        d += step;
+      }
+      carry = d - len;
+    }
+    if (txt.length) out.push({ text: txt, str: str, fs: fs, c: L.c, t: t });
+  }
+  return out;
+}
+
+/* the picture drawn once off screen and read back cell by cell.  a cell's
+   ink is how far its pixels stand off the page; its colour is the colour of
+   that ink, weighted by how much of it there is. */
+function glyphGrid(ls) {
+  var keep = [], draw = [], i;
+  for (i = 0; i < ls.length; i++) (ls[i].overlay ? keep : draw).push(ls[i]);
+  var sc = (draftMode || orbiting) ? 0.5 : 1;
+  var cw = Math.max(1, Math.round(W * sc)), ch = Math.max(1, Math.round(H * sc));
+  var cv = glyphGrid.cv || (glyphGrid.cv = document.createElement('canvas'));
+  if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+  var g = cv.getContext('2d', { willReadFrequently: true });
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = pal().bg; g.fillRect(0, 0, cw, ch);
+  g.setTransform(sc, 0, 0, sc, 0, 0);
+  paintLines(g, draw);
+  var px = g.getImageData(0, 0, cw, ch).data;
+
+  var bg = hex2rgb(pal().bg), chars = glyphChars(), n = chars.length;
+  var cell = Math.max(3, P.glyphCell), cpx = cell * sc;
+  var nx = Math.ceil(W / cell), ny = Math.ceil(H / cell);
+  var groups = {}, out = [], count = 0;
+  for (var gy = 0; gy < ny; gy++) {
+    var y0 = Math.floor(gy * cpx), y1 = Math.min(ch, Math.floor((gy + 1) * cpx));
+    for (var gx = 0; gx < nx; gx++) {
+      var x0 = Math.floor(gx * cpx), x1 = Math.min(cw, Math.floor((gx + 1) * cpx));
+      var ink = 0, r = 0, gg = 0, b = 0, m = 0;
+      for (var yy = y0; yy < y1; yy++) {
+        var o = (yy * cw + x0) * 4;
+        for (var xx = x0; xx < x1; xx++, o += 4) {
+          var pr = px[o], pg = px[o + 1], pb = px[o + 2];
+          var e = Math.max(Math.abs(pr - bg[0]), Math.abs(pg - bg[1]), Math.abs(pb - bg[2])) / 255;
+          ink += e; r += pr * e; gg += pg * e; b += pb * e; m++;
+        }
+      }
+      if (!m || ink <= 0) continue;
+      var cov = clamp(ink / m * P.glyphGain, 0, 1);
+      if (cov < 0.03) continue;
+      var idx = P.glyphSpell ? (count++ % n) : Math.min(n - 1, Math.floor(cov * n));
+      /* colours are pooled a little so the page is a few dozen runs of text, not thousands */
+      var cr = (r / ink) & 0xf8, cg = (gg / ink) & 0xf8, cb = (b / ink) & 0xf8;
+      var key = (cr << 16) | (cg << 8) | cb;
+      var grp = groups[key];
+      if (!grp) {
+        grp = groups[key] = { text: [], str: [], fs: cell, c: 'rgb(' + cr + ',' + cg + ',' + cb + ')', t: cov };
+        out.push(grp);
+      }
+      grp.text.push((gx + 0.5) * cell, (gy + 0.5) * cell, 0);
+      grp.str.push(chars[idx]);
+    }
+  }
+  for (i = 0; i < keep.length; i++) out.push(keep[i]);
+  return out;
+}
+
+/* ------------------------------------------------------------------
+   the elevation overlay: the height at points across the ground, as a
+   digit from 0 to 9 over a range of the user's choosing
+   ------------------------------------------------------------------ */
+function elevDigit(h) {
+  /* from sea: the range is measured over the land, so 0 is the coast and 1 the top of the ground */
+  if (P.elevSea) h = (h - P.sea) / Math.max(0.001, 1 - P.sea);
+  var lo = P.elevLo, hi = P.elevHi;
+  if (Math.abs(hi - lo) < 0.001) hi = lo + 0.001;
+  return clamp(Math.floor((h - lo) / (hi - lo) * 10), 0, 9);
+}
+function elevShown(h) { return !(P.elevLand && h < P.sea); }
+/* ramp: the digit takes the colour of its own height.  ink: the palette's
+   ink.  contrast: black or white, whichever stands off what is under it -
+   the false colour fill if it is on, the page if not. */
+function elevColor(dg, h) {
+  var m = P.elevInk | 0;
+  if (m === 1) return flatColor(pal(), 1);
+  if (m === 2) {
+    var u = P.tint && h !== undefined ? tintRGB(tintTone(h)) : hex2rgb(pal().bg);
+    return (0.2126 * u[0] + 0.7152 * u[1] + 0.0722 * u[2]) > 128 ? 'rgb(12,12,14)' : 'rgb(250,250,246)';
+  }
+  return styleColor(dg / 9);
+}
+function elevLabel(x, y, dg, h) {
+  return { text: [x, y, 0], str: [String(dg)], fs: P.elevSize, c: elevColor(dg, h), overlay: true, t: dg / 9 };
+}
+
+/* on the flat sheet: a scattered grid in map space, one run of text per colour */
+function genElevMap(out) {
+  var sp = Math.max(6, P.elevStep), jit = P.elevJitter * sp;
+  var groups = {}, list = [], i;
+  var cols = Math.ceil(W / sp), rows = Math.ceil(H / sp);
+  for (var j = 0; j <= rows; j++) {
+    for (i = 0; i <= cols; i++) {
+      var px = (i + 0.5) * sp + (lwHash(i * 7.1, j * 3.3) - 0.5) * jit;
+      var py = (j + 0.5) * sp + (lwHash(i * 2.9 + 11, j * 5.7) - 0.5) * jit;
+      if (px < 0 || px > W || py < 0 || py > H) continue;
+      var h = sampleH(px / H, py / H);
+      if (!elevShown(h)) continue;
+      var dg = elevDigit(h), c = elevColor(dg, h), gp = groups[c];
+      if (!gp) { gp = groups[c] = { text: [], str: [], fs: P.elevSize, c: c, overlay: true, t: dg / 9 }; list.push(gp); }
+      gp.text.push(px, py, 0);
+      gp.str.push(String(dg));
+    }
+  }
+  for (i = 0; i < list.length; i++) out.push(list[i]);
+}
+
+/* a run of text in map space, carried through the same projection as the
+   lines and dropped point by point wherever the projection hides it */
+function projectText(out, L, place) {
+  var txt = [], str = [];
+  for (var k = 0, q = 0; k + 2 < L.text.length; k += 3, q++) {
+    var pp = place(L.text[k], L.text[k + 1]);
+    if (!pp) continue;
+    txt.push(pp[0], pp[1], 0);
+    str.push(L.str[q]);
+  }
+  if (txt.length) out.push({ text: txt, str: str, fs: L.fs, c: L.c, overlay: L.overlay, t: L.t });
+}
+
 function generate() {
   var t0 = performance.now();
   var ls;
@@ -3136,17 +3707,20 @@ function generate() {
       var sf = genSeaFill();
       if (sf) ls.unshift(sf);
     }
+    if (P.tint && (P.mapView | 0) === 0) ls.unshift(genTintRaster());
     if (!draftMode) {
       if (P.rivers) genRivers(ls);
       if (P.paths) genPaths(ls);
     }
     if (P.veg) genVeg(ls);
+    if (P.elev) genElevMap(ls);
     if (P.mapView === 1) ls = applyGlobe(ls);
     else if (P.mapView === 2) ls = applyRelief(ls);
   }
 
   applyWobble(ls);
   lines = applyLinework(ls);
+  if ((P.glyphMode | 0) === 2) lines = glyphGrid(lines);
   return performance.now() - t0;
 }
 
@@ -3170,30 +3744,58 @@ function draw() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = p.bg;
   ctx.fillRect(0, 0, W, H);
+  paintLines(ctx, lines);
+  if (P.showNodes) drawNodes();
+}
 
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+/* everything the generators made, painted in order onto any context - the
+   screen, or the off-screen page the character grid reads back */
+function paintLines(g, list) {
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
   var dashed = false;
 
-  for (var i = 0; i < lines.length; i++) {
-    var L = lines[i], pts = L.pts, n = pts ? pts.length : 0;
+  for (var i = 0; i < list.length; i++) {
+    var L = list[i], pts = L.pts, n = pts ? pts.length : 0;
+
+    /* the false colour of the flat sheet: the grid, one pixel a cell */
+    if (L.raster) {
+      g.imageSmoothingEnabled = true;
+      g.drawImage(L.raster, L.x, L.y, L.rw, L.rh);
+      continue;
+    }
+
+    /* characters: one font for the run, turned one by one only when they have to be */
+    if (L.text) {
+      var tx = L.text, ts = L.str;
+      g.font = L.fs.toFixed(1) + 'px ' + GLYPH_FONT;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = L.c;
+      for (var e = 0, f = 0; e + 2 < tx.length; e += 3, f++) {
+        if (tx[e + 2]) {
+          g.save(); g.translate(tx[e], tx[e + 1]); g.rotate(tx[e + 2]);
+          g.fillText(ts[f], 0, 0); g.restore();
+        } else g.fillText(ts[f], tx[e], tx[e + 1]);
+      }
+      continue;
+    }
 
     /* the sea is the page minus the land: one path of the whole plate plus
        every closed coastline, filled even-odd, so a lake inside an island
        comes back out as water */
     if (L.seaFill) {
-      ctx.beginPath();
+      g.beginPath();
       /* on a globe the water stops at the limb, so the disc is the outer ring
          and the page is not part of it */
-      if (!L.disc) ctx.rect(0, 0, W, H);
+      if (!L.disc) g.rect(0, 0, W, H);
       for (var q = 0; q < L.polys.length; q++) {
         var sp = L.polys[q];
-        ctx.moveTo(sp[0], sp[1]);
-        for (var m = 2; m < sp.length; m += 2) ctx.lineTo(sp[m], sp[m + 1]);
-        ctx.closePath();
+        g.moveTo(sp[0], sp[1]);
+        for (var m = 2; m < sp.length; m += 2) g.lineTo(sp[m], sp[m + 1]);
+        g.closePath();
       }
-      ctx.fillStyle = L.c;
-      ctx.fill('evenodd');
+      g.fillStyle = L.c;
+      g.fill('evenodd');
       continue;
     }
 
@@ -3201,13 +3803,13 @@ function draw() {
        contour still costs one stroke rather than four hundred */
     if (L.marks) {
       var mk = L.marks;
-      if (dashed) { ctx.setLineDash([]); dashed = false; }
-      ctx.beginPath();
+      if (dashed) { g.setLineDash([]); dashed = false; }
+      g.beginPath();
       for (var z = 0; z + 3 < mk.length; z += 4) {
-        ctx.moveTo(mk[z], mk[z + 1]); ctx.lineTo(mk[z + 2], mk[z + 3]);
+        g.moveTo(mk[z], mk[z + 1]); g.lineTo(mk[z + 2], mk[z + 3]);
       }
-      ctx.strokeStyle = L.c; ctx.lineWidth = L.w;
-      ctx.stroke();
+      g.strokeStyle = L.c; g.lineWidth = L.w;
+      g.stroke();
       continue;
     }
 
@@ -3216,42 +3818,41 @@ function draw() {
     /* the body and the walls of a solid block: filled outright, so whatever
        stands behind them is simply painted out */
     if (L.fillPoly) {
-      if (dashed) { ctx.setLineDash([]); dashed = false; }
-      ctx.beginPath();
-      ctx.moveTo(pts[0], pts[1]);
-      for (var fq = 2; fq < n; fq += 2) ctx.lineTo(pts[fq], pts[fq + 1]);
-      ctx.closePath();
-      ctx.fillStyle = L.fill;
-      ctx.fill();
-      if (L.w > 0) { ctx.strokeStyle = L.c; ctx.lineWidth = L.w; ctx.stroke(); }
+      if (dashed) { g.setLineDash([]); dashed = false; }
+      g.beginPath();
+      g.moveTo(pts[0], pts[1]);
+      for (var fq = 2; fq < n; fq += 2) g.lineTo(pts[fq], pts[fq + 1]);
+      g.closePath();
+      g.fillStyle = L.fill;
+      g.fill();
+      if (L.w > 0) { g.strokeStyle = L.c; g.lineWidth = L.w; g.stroke(); }
       continue;
     }
 
-    if (L.dash) { ctx.setLineDash(L.dash); dashed = true; }
-    else if (dashed) { ctx.setLineDash([]); dashed = false; }
+    if (L.dash) { g.setLineDash(L.dash); dashed = true; }
+    else if (dashed) { g.setLineDash([]); dashed = false; }
 
     if (L.fill) {
-      ctx.beginPath();
-      ctx.moveTo(pts[0], pts[1]);
-      for (var k = 2; k < n; k += 2) ctx.lineTo(pts[k], pts[k + 1]);
-      ctx.lineTo(pts[n - 2], L.fillBase);
-      ctx.lineTo(pts[0], L.fillBase);
-      ctx.closePath();
-      ctx.fillStyle = L.fill;
-      ctx.fill();
+      g.beginPath();
+      g.moveTo(pts[0], pts[1]);
+      for (var k = 2; k < n; k += 2) g.lineTo(pts[k], pts[k + 1]);
+      g.lineTo(pts[n - 2], L.fillBase);
+      g.lineTo(pts[0], L.fillBase);
+      g.closePath();
+      g.fillStyle = L.fill;
+      g.fill();
     }
 
-    ctx.beginPath();
-    ctx.moveTo(pts[0], pts[1]);
-    for (var j = 2; j < n; j += 2) ctx.lineTo(pts[j], pts[j + 1]);
-    if (L.closed) ctx.closePath();
-    ctx.strokeStyle = L.c;
-    ctx.lineWidth = L.w;
-    ctx.stroke();
+    g.beginPath();
+    g.moveTo(pts[0], pts[1]);
+    for (var j = 2; j < n; j += 2) g.lineTo(pts[j], pts[j + 1]);
+    if (L.closed) g.closePath();
+    g.strokeStyle = L.c;
+    g.lineWidth = L.w;
+    g.stroke();
   }
-  if (dashed) ctx.setLineDash([]);
+  if (dashed) g.setLineDash([]);
 
-  if (P.showNodes) drawNodes();
 }
 
 function drawNodes() {
@@ -3319,7 +3920,7 @@ function run() {
   try {
     var res = draftMode ? Math.min(P.res, 130) : P.res;
     if (needField) { lastFieldMs = buildField(res); needField = false; needLines = true; }
-    if (needLines) { lastLineMs = generate(); needLines = false; }
+    if (needLines) { lastLineMs = generate(); needLines = false; syncRampPreview(); }
     draw();
     status();
   } catch (e) {
@@ -3648,6 +4249,13 @@ function syncAll() {
   setToggle('btn-globegrid', P.globeGrid); setToggle('btn-globelimb', P.globeLimb);
   setToggle('btn-reliefsolid', P.reliefSolid);
   document.getElementById('midiscale').value = String(P.midiScale);
+  document.getElementById('ramp').value = String(P.ramp);
+  setToggle('btn-rampinv', P.rampInvert); setToggle('btn-tint', P.tint);
+  setToggle('btn-glyphspell', P.glyphSpell); setToggle('btn-glyphturn', P.glyphTurn);
+  setToggle('btn-elev', P.elev); setToggle('btn-elevland', P.elevLand);
+  setToggle('btn-elevsea', P.elevSea);
+  syncGlyphUI();
+  syncColours();
   syncModeUI();
   syncNodeUI();
 }
@@ -3679,7 +4287,12 @@ var MODE_HINTS = [
 /* the little labels beside a section heading, kept in step with its state */
 var LW_NAMES = ['', 'dots', 'dashes', 'dither', 'crosses'];
 function syncTags() {
-  document.getElementById('lw-tag').textContent = LW_NAMES[P.linework | 0] || '';
+  document.getElementById('lw-tag').textContent =
+    (P.glyphMode | 0) ? 'characters' : (LW_NAMES[P.linework | 0] || '');
+  document.getElementById('glyph-tag').textContent =
+    ['', 'along lines', 'grid'][P.glyphMode | 0] + (P.elev ? ((P.glyphMode | 0) ? ' + ' : '') + '0–9' : '');
+  document.getElementById('style-tag').textContent =
+    (P.ramp ? RAMP_NAMES[P.ramp | 0] : pal().name) + (P.tint ? ' · fill' : '');
   document.getElementById('veg-tag').textContent =
     P.veg ? (VEG_NAMES[P.vegMix | 0] || '') : '';
   document.getElementById('midi-tag').textContent =
@@ -3722,6 +4335,82 @@ function syncNodeUI() {
   document.getElementById('kernelsel').value = String(selected >= 0 ? nodes[selected].k : P.nodeKernel);
 }
 
+/* the colour pickers.  touching one makes the palette the sheet's own,
+   starting from whichever palette was showing */
+function buildColourControls() {
+  var host = document.getElementById('swatches'), i;
+  SWATCHES.forEach(function (sw) {
+    var lab = document.createElement('label');
+    var inp = document.createElement('input');
+    inp.type = 'color'; inp.id = 'sw-' + sw.key;
+    inp.setAttribute('aria-label', sw.label + ' colour');
+    lab.appendChild(document.createTextNode(sw.label));
+    lab.appendChild(inp);
+    host.appendChild(lab);
+    inp.addEventListener('input', function () {
+      if (P.palette !== CUSTOM) {
+        var from = pal();
+        SWATCHES.forEach(function (o) { P[o.key] = o.get(from); });
+        P.palette = CUSTOM;
+        document.getElementById('palette').value = String(CUSTOM);
+      }
+      P[sw.key] = inp.value;
+      document.body.classList.toggle('lightfield', !!pal().light);
+      syncRampPreview();
+      invalidate('lines');
+    });
+  });
+
+  var rs = document.getElementById('ramp');
+  rs.addEventListener('change', function () { P.ramp = +rs.value; syncRampPreview(); invalidate('lines'); });
+
+  var gs = document.getElementById('glyphset');
+  for (i = 0; i < GLYPH_SETS.length; i++) {
+    var o = document.createElement('option');
+    o.value = String(i); o.textContent = GLYPH_SETS[i].name;
+    gs.appendChild(o);
+  }
+  gs.addEventListener('change', function () { P.glyphSet = +gs.value; syncGlyphUI(); invalidate('lines'); });
+  var gc = document.getElementById('glyphcustom');
+  gc.addEventListener('input', function () {
+    P.glyphCustom = gc.value;
+    if (P.glyphSet !== GLYPH_SETS.length - 1) { P.glyphSet = GLYPH_SETS.length - 1; gs.value = String(P.glyphSet); }
+    invalidate('lines');
+  });
+  document.getElementById('elevink').addEventListener('change', function () {
+    P.elevInk = +this.value; invalidate('lines');
+  });
+  document.getElementById('glyphmode').addEventListener('change', function () {
+    P.glyphMode = +this.value; syncGlyphUI(); invalidate('lines');
+  });
+}
+
+function syncColours() {
+  var p = pal();
+  SWATCHES.forEach(function (sw) {
+    var inp = document.getElementById('sw-' + sw.key);
+    if (inp) inp.value = sw.get(p);
+  });
+  syncRampPreview();
+}
+/* the ramp as it will actually be laid down - range, gamma, bands and all */
+function syncRampPreview() {
+  var el = document.getElementById('ramppreview');
+  if (!el) return;
+  var st = [];
+  for (var i = 0; i <= 32; i++) {
+    var c = rampRGB(i / 32);
+    st.push('rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ') ' + (i / 32 * 100).toFixed(1) + '%');
+  }
+  el.style.background = 'linear-gradient(90deg,' + st.join(',') + ')';
+}
+function syncGlyphUI() {
+  document.getElementById('glyphmode').value = String(P.glyphMode);
+  document.getElementById('glyphset').value = String(P.glyphSet);
+  document.getElementById('glyphcustom').value = P.glyphCustom;
+  document.getElementById('elevink').value = String(P.elevInk);
+}
+
 function buildPanel() {
   var i;
   for (i = 0; i < SPECS.length; i++) {
@@ -3749,13 +4438,15 @@ function buildPanel() {
   });
 
   var ps = document.getElementById('palette');
-  for (i = 0; i < PALETTES.length; i++) {
+  for (i = 0; i <= PALETTES.length; i++) {
     var op = document.createElement('option');
-    op.value = String(i); op.textContent = PALETTES[i].name;
+    op.value = String(i); op.textContent = i === CUSTOM ? 'custom' : PALETTES[i].name;
     ps.appendChild(op);
   }
+  buildColourControls();
   ps.addEventListener('change', function () {
     P.palette = +ps.value;
+    syncColours();
     document.body.classList.toggle('lightfield', !!pal().light);
     invalidate('lines');
   });
@@ -3822,6 +4513,13 @@ function buildPanel() {
   bindToggle('btn-globegrid', 'globeGrid', 'lines');
   bindToggle('btn-globelimb', 'globeLimb', 'lines');
   bindToggle('btn-reliefsolid', 'reliefSolid', 'lines');
+  bindToggle('btn-rampinv', 'rampInvert', 'lines');
+  bindToggle('btn-tint', 'tint', 'lines');
+  bindToggle('btn-glyphspell', 'glyphSpell', 'lines');
+  bindToggle('btn-glyphturn', 'glyphTurn', 'lines');
+  bindToggle('btn-elev', 'elev', 'lines');
+  bindToggle('btn-elevland', 'elevLand', 'lines');
+  bindToggle('btn-elevsea', 'elevSea', 'lines');
 
   document.getElementById('btn-midi').addEventListener('click', function () {
     midiEnable(!P.midiOn);
@@ -4152,6 +4850,8 @@ function importPresets(e) {
 /* the switches a preset does not mention go back to off, so a mesh or a set of
    rivers does not follow you into the next sheet */
 var PRESET_OFF = { meshMode: false, strata: false, seaFill: false, rivers: false, paths: false,
+                   tint: false, glyphMode: 0, elev: false, ramp: 0, rampInvert: false, rampSteps: 0,
+                   rampLo: 0, rampHi: 1, rampGamma: 1,
                    p3d: false, veg: false, meshTri: false, blockShape: 0, linework: 0,
                    mapView: 0, globeGrid: false };
 
@@ -4363,6 +5063,12 @@ window.addEventListener('keydown', function (e) {
     document.getElementById('linework').value = String(P.linework);
     invalidate('lines');
   }
+  else if (k === 'g') {
+    P.glyphMode = ((P.glyphMode | 0) + 1) % 3;
+    syncGlyphUI(); invalidate('lines');
+  }
+  else if (k === 'e') { P.elev = !P.elev; setToggle('btn-elev', P.elev); invalidate('lines'); }
+  else if (k === 'f') { P.tint = !P.tint; setToggle('btn-tint', P.tint); invalidate('lines'); }
   else if (k === 'p') {
     P.mapView = (P.mapView + 1) % 3;
     document.getElementById('mapview').value = String(P.mapView);
@@ -4439,6 +5145,10 @@ function svgPaint(css, attr) {
   return attr + '="' + hex + '"' + (a < 0.999 ? ' ' + attr + '-opacity="' + a.toFixed(3) + '"' : '');
 }
 
+function xmlEsc(v) {
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function exportSVG() {
   var wasDraft = draftMode;
   if (wasDraft) { draftMode = false; needField = true; needLines = true; run(); }
@@ -4446,7 +5156,7 @@ function exportSVG() {
   var p = pal();
   var out = [];
   out.push('<?xml version="1.0" encoding="UTF-8"?>');
-  out.push('<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(W) + '" height="' +
+  out.push('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + Math.round(W) + '" height="' +
            Math.round(H) + '" viewBox="0 0 ' + Math.round(W) + ' ' + Math.round(H) + '">');
   out.push('<title>relief — ' + stamp() + '</title>');
   if (P.svgBg) out.push('<rect width="100%" height="100%" fill="' + p.bg + '"/>');
@@ -4454,6 +5164,28 @@ function exportSVG() {
 
   for (var i = 0; i < lines.length; i++) {
     var L = lines[i], pts = L.pts, n = pts ? pts.length : 0, k;
+
+    if (L.raster) {
+      out.push('<image x="' + L.x.toFixed(2) + '" y="' + L.y.toFixed(2) + '" width="' + L.rw.toFixed(2) +
+               '" height="' + L.rh.toFixed(2) + '" preserveAspectRatio="none" xlink:href="' +
+               L.raster.toDataURL('image/png') + '"/>');
+      continue;
+    }
+
+    /* characters stay text, so a plotter font or an editor can take them over */
+    if (L.text) {
+      var tx = L.text, tg = [];
+      for (var e = 0, f = 0; e + 2 < tx.length; e += 3, f++) {
+        var ex = tx[e].toFixed(2), ey = tx[e + 1].toFixed(2);
+        tg.push('<text x="' + ex + '" y="' + ey + '"' +
+                (tx[e + 2] ? ' transform="rotate(' + (tx[e + 2] * 180 / Math.PI).toFixed(1) + ' ' + ex + ' ' + ey + ')"' : '') +
+                '>' + xmlEsc(L.str[f]) + '</text>');
+      }
+      out.push('<g ' + svgPaint(L.c, 'fill') + ' stroke="none" font-family="' + xmlEsc(GLYPH_FONT) +
+               '" font-size="' + L.fs.toFixed(1) + '" text-anchor="middle" dominant-baseline="central">' +
+               tg.join('') + '</g>');
+      continue;
+    }
 
     if (L.seaFill) {
       var sd = L.disc ? '' : 'M0 0H' + Math.round(W) + 'V' + Math.round(H) + 'H0Z';
