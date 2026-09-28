@@ -95,6 +95,49 @@ or a **dither** that thins the marks out toward the light end of the ramp — th
 becoming the density of its stipple. Every mark is still real geometry and still exports; a
 stippled contour costs one path, not four hundred.
 
+## Colour
+
+The palette is only the starting point. Every colour it carries — page, ink, sea, node accent and
+the four stops of the ramp — has a picker under *Line style*; touching any of them turns the palette
+into **custom**, seeded from whichever one was showing, and a custom sheet saves and loads with the
+rest of the parameters.
+
+- **ramp** swaps the palette's four stops for a false-colour scale: turbo, spectral, viridis,
+  hypsometric, thermal, rainbow or ice. The strip under the menu shows the ramp exactly as it will
+  be laid down.
+- **colour bands** steps the ramp into that many flat classes; **ramp low / high** decide which
+  part of the ground the scale is spread across, **ramp gamma** pushes the colour toward one end,
+  and **invert ramp** runs it the other way.
+- **false colour fill** paints the ground itself with the ramp, under the lines. On the flat sheet
+  it is the grid, one pixel a cell; on the globe, the drape and the profile stack it is real
+  polygons cut into runs of one colour, painted back to front with everything else, so it hides
+  what stands behind it. *fill opacity* mixes it into the page. `F` toggles it.
+
+## Characters
+
+A limited character set standing in for the ink, beside the dots, dashes and dither of the line work.
+
+- **along the lines** sets glyphs on the drawing at a fixed step of arc length. Which glyph is
+  chosen by the tone of the line, so with the digits a contour reads out its own height; with
+  **spell in order** the set is written along the line instead, and **follow line** turns each
+  glyph with it.
+- **character grid** renders the whole picture — lines, fills, sea — off screen and reads it back
+  through a grid of cells. Each cell takes the character whose weight matches the ink under it and
+  the colour of that ink.
+- the sets run light to dark: digits, an ascii ramp, blocks, dots, a survey set of `3 4 ▲ ●`,
+  squares, braille, binary, hex, or one of your own. `G` cycles the mode.
+
+The SVG keeps the characters as text, so a plotter font or an editor can take them over.
+
+## Elevation overlay
+
+**elevation 0–9** scatters the height of the ground across the sheet as a digit. *range low* is 0
+and *range high* is 9, the ground between them split evenly; with **from sea level** on the range
+is measured over the land, so 0 is the coast. The digits sit on the ground in every view — the flat
+sheet, the globe, the drape and the block — and are hidden by whatever stands in front of them. The
+digit colour follows the ramp, the ink, or goes black or white against whatever is under it. `E`
+toggles it.
+
 ## Vegetation
 
 Symbols scattered where the ground, the slope and a moisture field all allow them: marsh on the
@@ -152,6 +195,9 @@ drag its ring to resize, wheel over it to change height, alt+click to delete.
 | `V` | vegetation |
 | `X` | cycle line work |
 | `P` | projection — sheet, globe, relief |
+| `G` | characters — off, along lines, grid |
+| `E` | elevation digits |
+| `F` | false colour fill |
 | `shift+drag` | turn the block, the globe or the drape |
 | `shift+wheel` | camera zoom |
 | `D` | drift |
