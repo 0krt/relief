@@ -2674,31 +2674,123 @@ function globeGraticule(out) {
   }
 }
 
+/* a screen point on the near hemisphere, taken back to the map */
+function globeUnproject(sx, sy) {
+  var R = GL.R, x1 = sx - GL.cx, y2 = GL.cy - sy;
+  var z2 = Math.sqrt(Math.max(0, R * R - x1 * x1 - y2 * y2));
+  var y = y2 * GL.cp + z2 * GL.sp, z1 = -y2 * GL.sp + z2 * GL.cp;
+  var x = x1 * GL.ca - z1 * GL.sa, z = x1 * GL.sa + z1 * GL.ca;
+  var lat = Math.asin(clamp(y / R, -1, 1)), lon = Math.atan2(x, z);
+  return [(lon / (Math.PI * 2 * P.globeSpan) + 0.5) * aspect, 0.5 - lat / (Math.PI * P.globeSpan)];
+}
+
+/* even-odd crossings of a flat ring by a ray from (px, py) towards +x */
+function ringCross(r, px, py, sc) {
+  var n = r.length, c = 0, jx = r[n - 2] * sc, jy = r[n - 1] * sc;
+  for (var k = 0; k < n; k += 2) {
+    var ix = r[k] * sc, iy = r[k + 1] * sc;
+    if ((iy > py) !== (jy > py) && px < (jx - ix) * (py - iy) / (jy - iy) + ix) c++;
+    jx = ix; jy = iy;
+  }
+  return c;
+}
+
+var GLOBE_LIMB_N = 256;
+
+/* the limb from angle a0 round to a1, always the same way round, on the
+   same vertices as the disc so the two lie exactly on top of each other */
+function limbArc(out, a0, a1) {
+  var TAU = Math.PI * 2, st = TAU / GLOBE_LIMB_N;
+  while (a1 <= a0) a1 += TAU;
+  for (var k = Math.floor(a0 / st) + 1; k * st < a1; k++) {
+    out.push(GL.cx + Math.cos(k * st) * GL.R, GL.cy + Math.sin(k * st) * GL.R);
+  }
+  out.push(GL.cx + Math.cos(a1) * GL.R, GL.cy + Math.sin(a1) * GL.R);
+}
+
+/* the sea on the globe: the disc, with every coastline put on the sphere and
+   cut out of it even-odd.  a coastline that runs round the back leaves as a
+   set of runs from limb to limb; each is closed along the limb itself, never
+   with a chord.  which way round each arc goes does not matter for the
+   parity except as a whole: the arcs chosen and the true ones differ by
+   whole turns of the limb, so the result is either right or exactly inside
+   out within the disc.  one point whose answer is known from the map
+   settles which, and inside out is undone by dropping the disc. */
+function globeSea(src) {
+  var TAU = Math.PI * 2, rings = [], angs = [], j, k;
+  for (j = 0; j < src.length; j++) {
+    var pts = src[j], n = pts.length;
+    if (n < 6) continue;
+    var hid = -1, vis = 0;
+    for (k = 0; k < n; k += 2) {
+      if (globePoint(pts[k] / H, pts[k + 1] / H, 0)[2] > 0) vis++;
+      else if (hid < 0) hid = k;
+    }
+    if (!vis) continue;
+    if (hid < 0) {
+      var all = [];
+      for (k = 0; k < n; k += 2) {
+        var pa = globePoint(pts[k] / H, pts[k + 1] / H, 0);
+        all.push(pa[0], pa[1]);
+      }
+      rings.push(all);
+      continue;
+    }
+    /* start on the far side, so every run begins and ends at the limb */
+    var rot = pts.slice(hid).concat(pts.slice(0, hid)), runs = [];
+    globeLine(runs, { pts: rot, closed: true, w: 1, c: '#000' }, 0);
+    for (k = 0; k < runs.length; k++) {
+      var r = runs[k].pts, m = r.length;
+      var aIn = Math.atan2(r[1] - GL.cy, r[0] - GL.cx);
+      var aOut = Math.atan2(r[m - 1] - GL.cy, r[m - 2] - GL.cx);
+      if (aIn < 0) aIn += TAU;
+      if (aOut < 0) aOut += TAU;
+      angs.push(aIn, aOut);
+      limbArc(r, aOut, aIn);
+      rings.push(r);
+    }
+  }
+
+  var lim = [];
+  for (k = 0; k < GLOBE_LIMB_N; k++) {
+    var a = k / GLOBE_LIMB_N * TAU;
+    lim.push(GL.cx + Math.cos(a) * GL.R, GL.cy + Math.sin(a) * GL.R);
+  }
+
+  /* the probe: a point well inside the disc, as far from every coastline
+     on screen as the candidates allow, so both answers are unambiguous */
+  var best = null, bestD = -1, c, q;
+  for (c = 0; c < 13; c++) {
+    var cr = c === 0 ? 0 : (c < 7 ? 0.35 : 0.7) * GL.R, ca = c * 2.1;
+    var px = GL.cx + Math.cos(ca) * cr, py = GL.cy + Math.sin(ca) * cr, d = Infinity;
+    for (j = 0; j < rings.length && d > bestD; j++) {
+      var rr = rings[j];
+      for (q = 0; q < rr.length; q += 2) {
+        var dx = rr[q] - px, dy = rr[q + 1] - py, dd = dx * dx + dy * dy;
+        if (dd < d) d = dd;
+      }
+    }
+    if (d > bestD) { bestD = d; best = [px, py]; }
+  }
+  var screenSea = 1;
+  for (j = 0; j < rings.length; j++) screenSea += ringCross(rings[j], best[0], best[1], 1);
+  var mp = globeUnproject(best[0], best[1]), land = 0;
+  for (j = 0; j < src.length; j++) {
+    if (src[j].length >= 6) land += ringCross(src[j], mp[0], mp[1], 1 / H);
+  }
+  if ((screenSea & 1) !== ((land & 1) ^ 1)) return rings;
+  return [lim].concat(rings);
+}
+
 function applyGlobe(ls) {
   globeSetup();
   var out = [], i, j;
   if (P.tint) globeTint(out);
 
-  /* the sea first: the disc of the planet, with the land cut back out of it.
-     a coastline that runs round the back is closed along the limb, so the
-     even-odd fill still reads. */
+  /* the sea first: the disc of the planet, with the land cut back out of it */
   for (i = 0; i < ls.length; i++) {
     if (!ls[i].seaFill) continue;
-    var polys = [];
-    var lim = [];
-    for (j = 0; j <= 128; j++) {
-      var a = j / 128 * Math.PI * 2;
-      lim.push(GL.cx + Math.cos(a) * GL.R, GL.cy + Math.sin(a) * GL.R);
-    }
-    polys.push(lim);
-    for (j = 0; j < ls[i].polys.length; j++) {
-      var runs = [];
-      globeLine(runs, { pts: ls[i].polys[j], closed: true, w: 1, c: '#000' }, 0);
-      for (var k = 0; k < runs.length; k++) {
-        if (runs[k].pts.length >= 6) polys.push(runs[k].pts);
-      }
-    }
-    out.push({ seaFill: true, polys: polys, c: ls[i].c, disc: true });
+    out.push({ seaFill: true, polys: globeSea(ls[i].polys), c: ls[i].c, disc: true });
     break;
   }
 
