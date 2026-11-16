@@ -25,7 +25,7 @@
   html, body { height: 100%; overflow: hidden; background: var(--bg); }
   body { font-family: var(--mono); color: var(--ink); font-size: 12px; }
 
-  #canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+  #canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
   #canvas.grabbing { cursor: grabbing; }
   #canvas.over-node { cursor: grab; }
   #canvas.over-ring { cursor: ew-resize; }
@@ -193,6 +193,16 @@
   button, select, input[type=number] { min-height: 24px; }
   button { min-width: 24px; }
   input[type="range"] { min-height: 24px; }
+
+  /* phones: the panel overlays the plate, so it starts closed and the header
+     leaves room for the toggle */
+  @media (max-width: 640px) {
+    #panel { width: min(300px, calc(100vw - 56px)); }
+    #paneltoggle { right: calc(min(300px, 100vw - 56px) + 10px); }
+    #header { padding: 14px 64px 14px 16px; }
+    #header h1 { font-size: 11px; letter-spacing: 0.25em; }
+    #status { padding: 10px 16px; font-size: 9px; letter-spacing: 0.08em; }
+  }
 
   .sr-only {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -4695,13 +4705,19 @@ function buildPanel() {
   buildPresets();
 
   var panel = document.getElementById('panel');
-  document.getElementById('paneltoggle').addEventListener('click', function () {
-    panel.classList.toggle('hidden');
-    document.body.classList.toggle('panel-hidden', panel.classList.contains('hidden'));
-    this.setAttribute('aria-expanded', panel.classList.contains('hidden') ? 'false' : 'true');
-    if (panel.classList.contains('hidden')) panel.setAttribute('inert', '');
+  var toggle = document.getElementById('paneltoggle');
+  function setPanelHidden(hidden) {
+    panel.classList.toggle('hidden', hidden);
+    document.body.classList.toggle('panel-hidden', hidden);
+    toggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+    if (hidden) panel.setAttribute('inert', '');
     else panel.removeAttribute('inert');
+  }
+  toggle.addEventListener('click', function () {
+    setPanelHidden(!panel.classList.contains('hidden'));
   });
+  // on a phone the open panel would cover most of the plate
+  if (window.matchMedia('(max-width: 640px)').matches) setPanelHidden(true);
 }
 
 function rollSeed() {
